@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Entrada MARTECH</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🏭</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+/* ── Layout ── */
+.entry-grid{display:grid;grid-template-columns:1fr 460px;gap:16px;align-items:start;}
+@media(max-width:1000px){.entry-grid{grid-template-columns:1fr;}}
+
+/* ── Mode selector ── */
+.mode-selector{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.mode-card{
+  padding:18px;border-radius:14px;border:2.5px solid var(--border);
+  background:white;cursor:pointer;transition:all .2s;text-align:center;
+}
+.mode-card:hover{border-color:var(--navy);transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.mode-card.active{border-color:var(--navy);background:linear-gradient(135deg,rgba(13,43,122,.06),rgba(0,194,255,.06));}
+.mode-card.active.mp{border-color:#22c77a;background:rgba(34,199,122,.06);}
+.mode-icon{font-size:32px;margin-bottom:8px;}
+.mode-title{font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:var(--navy);}
+.mode-desc{font-size:11px;color:var(--text-300);margin-top:4px;}
+.mode-badge{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;}
+.mode-card.active .mode-badge{background:var(--navy);color:white;}
+.mode-card.active.mp .mode-badge{background:#22c77a;color:white;}
+.mode-badge{background:var(--border);color:var(--text-300);}
+
+/* ── Steps ── */
+.steps-bar{display:flex;background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 4px;border-right:1px solid var(--border);gap:3px;opacity:.3;transition:opacity .2s;}
+.step:last-child{border-right:none;}
+.step.active{opacity:1;background:rgba(13,43,122,.03);}
+.step.done{opacity:.75;}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--border);color:var(--text-300);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.step.active .step-num{background:var(--navy);color:white;}
+.step.done .step-num{background:var(--success);color:white;}
+.step-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-300);text-align:center;}
+.step.active .step-label,.step.done .step-label{color:var(--navy);}
+
+/* ── Camera ── */
+.camera-box{background:#060c1f;border-radius:16px;overflow:hidden;position:relative;aspect-ratio:4/3;}
+.camera-box video{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-guide{position:absolute;inset:0;pointer-events:none;}
+.cg{position:absolute;width:36px;height:36px;border:3px solid var(--cyan);}
+.cg.tl{top:14px;left:14px;border-right:none;border-bottom:none;border-radius:4px 0 0 0;}
+.cg.tr{top:14px;right:14px;border-left:none;border-bottom:none;border-radius:0 4px 0 0;}
+.cg.bl{bottom:14px;left:14px;border-right:none;border-top:none;border-radius:0 0 0 4px;}
+.cg.br{bottom:14px;right:14px;border-left:none;border-top:none;border-radius:0 0 4px 0;}
+.scan-line{position:absolute;left:14px;right:14px;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:sl 2.5s ease-in-out infinite;}
+@keyframes sl{0%,100%{top:10%}50%{top:85%}}
+.cam-status{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);backdrop-filter:blur(8px);color:white;font-size:12px;font-weight:600;padding:5px 16px;border-radius:20px;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;}
+.cam-badge{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.65);color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+
+/* ── Gallery ── */
+.photo-gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.photo-thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:2px solid var(--border);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.del-ph{position:absolute;top:3px;right:3px;background:rgba(239,68,68,.85);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;}
+.photo-thumb:hover .del-ph{display:flex;}
+.ph-num{position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.6);color:white;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px;}
+.add-photo-btn{aspect-ratio:4/3;border-radius:8px;border:2px dashed var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;color:var(--text-300);font-size:11px;font-weight:700;gap:4px;}
+.add-photo-btn:hover{border-color:var(--cyan);color:var(--navy);}
+.add-photo-btn .plus{font-size:22px;}
+
+/* ── Buttons ── */
+.cam-controls{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+.btn-capture{flex:1;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#0d2b7a,#2d6ef5);color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(13,43,122,.3);transition:all .2s;min-width:140px;}
+.btn-capture:hover{transform:translateY(-1px);}
+.btn-capture:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-analyze{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#00c2ff,#0d2b7a);color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 6px 28px rgba(0,194,255,.3);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;}
+.btn-analyze:hover{transform:translateY(-2px);}
+.btn-analyze:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-save{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#22c77a,#16a34a);color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:900;cursor:pointer;transition:all .2s;margin-top:10px;}
+.btn-save:hover{transform:translateY(-2px);}
+.btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.field-auto{background:rgba(0,194,255,.07)!important;border-color:rgba(0,194,255,.4)!important;}
+
+/* ── SKU / Inspection No ── */
+.sku-display{background:linear-gradient(135deg,rgba(13,43,122,.06),rgba(0,194,255,.06));border:1px solid rgba(0,194,255,.25);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.sku-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:900;color:var(--navy);flex:1;}
+.sku-lbl{font-size:9px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;}
+
+/* ── Bultos table ── */
+.bultos-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
+.bultos-table th{background:var(--navy);color:white;padding:7px 8px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.bultos-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.bultos-table tr:hover td{background:rgba(13,43,122,.02);}
+.bultos-table input{width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:11px;font-family:inherit;}
+.bultos-table input:focus{outline:none;border-color:var(--cyan);}
+
+/* ── Label preview ── */
+.label-preview-box{background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+.label-preview-title{font-size:10px;font-weight:800;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+
+/* ════════════════════════════════
+   LABEL 6×4 — MARTECH MATERIA PRIMA
+   (matches the physical label in image 1)
+   ════════════════════════════════ */
+.label-6x4{
+  width:100%;background:white;border:1.5px solid #ccc;
+  font-family:Arial,sans-serif;border-radius:4px;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);overflow:hidden;
+}
+.l6-head{
+  display:flex;align-items:center;padding:6px 10px;gap:10px;
+  border-bottom:1.5px solid #000;
+}
+.l6-logo-wrap{display:flex;flex-direction:column;align-items:center;min-width:70px;}
+.l6-logo-icon{font-size:22px;}
+.l6-logo-name{font-weight:900;font-size:13px;color:#000;line-height:1;}
+.l6-logo-sub{font-size:7px;color:#555;letter-spacing:1px;text-transform:uppercase;}
+.l6-insp-no{flex:1;text-align:center;}
+.l6-insp-label{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;}
+.l6-insp-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:900;color:#000;}
+/* Main body */
+.l6-body{display:grid;grid-template-columns:70px 1fr;min-height:90px;}
+.l6-left{border-right:1.5px solid #000;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;}
+.l6-right{padding:6px 10px;}
+/* PN row */
+.l6-pn-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;}
+.l6-pn-label{font-size:8px;font-weight:700;color:#555;text-transform:uppercase;}
+.l6-pn-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:900;color:#000;}
+.l6-pn-bc{text-align:right;}
+.l6-pn-bc svg{height:28px;max-width:130px;}
+/* QTY big */
+.l6-qty-row{display:flex;align-items:baseline;gap:10px;margin:4px 0;}
+.l6-qty-label{font-size:9px;font-weight:700;color:#555;width:50px;}
+.l6-qty-bc svg{height:22px;max-width:80px;}
+.l6-qty-val{font-size:28px;font-weight:900;color:#000;margin-left:auto;}
+/* Info rows */
+.l6-info-row{display:flex;gap:16px;font-size:10px;margin-top:4px;}
+.l6-info-cell{display:flex;gap:4px;}
+.l6-ik{font-weight:700;color:#333;}
+.l6-iv{color:#111;}
+/* PO row with barcode */
+.l6-po-row{display:flex;align-items:center;gap:8px;margin-top:3px;}
+.l6-po-label{font-size:8px;font-weight:700;color:#555;text-transform:uppercase;min-width:20px;}
+.l6-po-val{font-size:11px;font-weight:700;color:#000;}
+.l6-po-bc svg{height:22px;max-width:100px;}
+.l6-company{font-size:10px;font-weight:700;color:#000;border-top:1px solid #ddd;padding-top:2px;margin-top:3px;}
+/* Tracking section */
+.l6-track-row{border-top:1.5px solid #000;padding:4px 10px;display:flex;align-items:center;gap:8px;}
+.l6-track-label{font-size:10px;font-weight:700;color:#000;min-width:70px;}
+.l6-track-val{font-size:14px;font-weight:900;color:#000;font-family:'JetBrains Mono',monospace;}
+/* Footer */
+.l6-footer{display:flex;align-items:center;gap:8px;border-top:1.5px solid #000;padding:4px 10px;font-size:10px;}
+.l6-fecha-wrap{display:flex;flex-direction:column;}
+.l6-fecha-label{font-size:7px;font-weight:700;color:#555;text-transform:uppercase;}
+.l6-fecha-val{font-size:10px;font-weight:700;color:#000;}
+.l6-desc{font-size:10px;font-weight:700;color:#000;flex:1;}
+
+/* ════════════════════════════════
+   LABEL 4×3 — MARTECH MAQUINARIA
+   (matches image 2 — multiple PO/PN rows)
+   ════════════════════════════════ */
+.label-4x3m{
+  width:100%;background:white;border:1.5px solid #ccc;
+  font-family:Arial,sans-serif;border-radius:4px;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);overflow:hidden;
+}
+.l4m-head{display:flex;align-items:center;padding:5px 8px;border-bottom:1.5px solid #000;gap:8px;}
+.l4m-logo{display:flex;flex-direction:column;align-items:center;min-width:55px;}
+.l4m-logo-icon{font-size:16px;}
+.l4m-logo-name{font-weight:900;font-size:10px;color:#000;}
+.l4m-logo-sub{font-size:6px;color:#555;letter-spacing:.5px;}
+.l4m-ref{flex:1;text-align:center;}
+.l4m-ref-label{font-size:8px;color:#555;}
+.l4m-ref-val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:900;color:#000;}
+/* Parts table */
+.l4m-parts-table{width:100%;border-collapse:collapse;font-size:9px;}
+.l4m-parts-table th{background:#f0f0f0;border:1px solid #ccc;padding:3px 6px;font-weight:700;text-align:left;font-size:8px;}
+.l4m-parts-table td{border:1px solid #ccc;padding:3px 6px;}
+/* Footer */
+.l4m-footer{display:grid;grid-template-columns:1fr 1fr;border-top:1.5px solid #000;padding:4px 8px;gap:4px;font-size:9px;}
+.l4m-fk{font-weight:700;color:#333;}
+.l4m-fv{color:#000;}
+.l4m-bulto{text-align:right;font-size:11px;font-weight:900;color:#000;}
+
+/* ── Confidence ── */
+.conf-bar{height:5px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:5px;}
+.conf-fill{height:100%;border-radius:3px;transition:width .6s;}
+
+/* ── AI overlay ── */
+.ai-overlay{position:fixed;inset:0;background:rgba(6,12,31,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px;}
+.ai-overlay.open{display:flex;}
+.ai-spin{width:64px;height:64px;border-radius:50%;border:4px solid rgba(0,194,255,.2);border-top-color:var(--cyan);animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-ol-text{color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:700;}
+.ai-ol-sub{color:rgba(255,255,255,.5);font-size:12px;}
+
+/* ── Form panel ── */
+.form-panel{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;}
+.form-panel-header{background:linear-gradient(135deg,#0d2b7a,#1a3d9e);padding:14px 18px;display:flex;align-items:center;gap:12px;}
+.form-panel-title{color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;}
+.form-panel-body{padding:16px;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+    <div class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">Entrada <span>MARTECH</span></div>
+      <div class="header-actions">
+        <span class="badge badge-navy" style="font-size:11px;padding:5px 11px;">MARTECH Medical Products</span>
+        <button class="header-btn" onclick="resetAll()">🔄 Nueva</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- ── MODE SELECTOR ── -->
+      <div class="mode-selector" id="modeSelector">
+        <div class="mode-card mp active" id="cardMP" onclick="setMode('mp')">
+          <div class="mode-icon">🧪</div>
+          <div class="mode-title">Materia Prima</div>
+          <div class="mode-desc">Labels de packaging, etiquetas de carrier</div>
+          <div class="mode-badge">Etiqueta 6×4 + Excel</div>
+        </div>
+        <div class="mode-card" id="cardMAQ" onclick="setMode('maq')">
+          <div class="mode-icon">⚙️</div>
+          <div class="mode-title">Maquinaria</div>
+          <div class="mode-desc">Equipos, piezas técnicas, múltiples PO/PN</div>
+          <div class="mode-badge">Etiqueta 6×4 + 4×3 + Excel</div>
+        </div>
+      </div>
+
+      <!-- ── STEPS ── -->
+      <div class="steps-bar">
+        <div class="step active" id="s1"><div class="step-num">1</div><div class="step-label">📷 Fotos</div></div>
+        <div class="step"        id="s2"><div class="step-num">2</div><div class="step-label">🤖 AI</div></div>
+        <div class="step"        id="s3"><div class="step-num">3</div><div class="step-label">✏️ Datos</div></div>
+        <div class="step"        id="s4"><div class="step-num">4</div><div class="step-label">📦 Bultos</div></div>
+        <div class="step"        id="s5"><div class="step-num">5</div><div class="step-label">🏷️ Labels</div></div>
+        <div class="step"        id="s6"><div class="step-num">6</div><div class="step-label">✅ Guardar</div></div>
+      </div>
+
+      <div class="entry-grid">
+
+        <!-- ══ LEFT: Camera + Photos ══ -->
+        <div>
+          <div class="camera-box">
+            <video id="camVideo" autoplay playsinline muted></video>
+            <div class="cam-guide">
+              <div class="cg tl"></div><div class="cg tr"></div>
+              <div class="cg bl"></div><div class="cg br"></div>
+              <div class="scan-line"></div>
+            </div>
+            <div class="cam-status" id="camStatus">📷 Iniciando cámara...</div>
+            <div class="cam-badge" id="photoBadge" style="display:none;">📸 <span id="photoCount">0</span></div>
+          </div>
+
+          <div class="cam-controls">
+            <button class="btn-capture" id="captureBtn" onclick="capturePhoto()" disabled>📸 Capturar</button>
+            <label class="btn btn-ghost" style="padding:13px 14px;cursor:pointer;border-radius:12px;font-weight:700;font-size:13px;">
+              📁 Subir imagen(es)
+              <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+            </label>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
+              Imágenes <span id="photoCountLabel" style="color:var(--cyan);"></span>
+            </div>
+            <div class="photo-gallery" id="photoGallery">
+              <label class="add-photo-btn">
+                <div class="plus">＋</div><div>Agregar</div>
+                <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <button class="btn-analyze" id="analyzeBtn" onclick="analyzeWithAI()" disabled>
+              🤖 Analizar imágenes con AI
+            </button>
+            <div style="font-size:10px;color:var(--text-300);text-align:center;margin-top:5px;" id="aiHint">
+              Modos: Materia Prima extrae PN, QTY, PO, Tracking · Maquinaria agrega Part Model y Serial
+            </div>
+          </div>
+
+          <!-- Confidence -->
+          <div id="confSection" style="display:none;margin-top:10px;background:white;border-radius:10px;border:1px solid var(--border);padding:11px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-500);">
+              <span>Confianza AI</span><span id="confPct">—</span>
+            </div>
+            <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:0%;background:#22c77a;"></div></div>
+            <div id="confFields" style="font-size:10px;color:var(--text-300);margin-top:4px;"></div>
+          </div>
+        </div>
+
+        <!-- ══ RIGHT: Form ══ -->
+        <div>
+          <div class="form-panel">
+            <div class="form-panel-header">
+              <span style="font-size:20px;" id="panelIcon">🧪</span>
+              <div>
+                <div class="form-panel-title" id="panelTitle">Materia Prima — MARTECH</div>
+                <div style="color:rgba(255,255,255,.5);font-size:11px;" id="panelSub">Inspection No. se genera automáticamente</div>
+              </div>
+            </div>
+            <div class="form-panel-body">
+
+              <!-- Inspection No / SKU -->
+              <div class="sku-display">
+                <div>
+                  <div class="sku-lbl">Inspection No.</div>
+                  <div class="sku-val" id="skuDisplay">—</div>
+                </div>
+                <button class="btn btn-ghost btn-xs" onclick="refreshSKU()">🔄</button>
+              </div>
+
+              <!-- Tipo entrada info -->
+              <div style="margin-bottom:12px;padding:8px 12px;background:rgba(34,199,122,.06);border:1px solid rgba(34,199,122,.2);border-radius:8px;font-size:11px;color:#16a34a;font-weight:600;" id="tipoInfo">
+                🧪 Modo: Materia Prima — Label 6×4 + Excel
+              </div>
+
+              <!-- Common fields -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                  <label class="form-label">Part Number (PN) <span class="req">*</span></label>
+                  <input class="form-input" id="fPN" placeholder="P/N" oninput="this.value=this.value.toUpperCase();onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">PO <span class="req">*</span></label>
+                  <input class="form-input" id="fPO" placeholder="P158398" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Descripción</label>
+                  <input class="form-input" id="fDesc" placeholder="Descripción del material" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Unidades (total)</label>
+                  <input class="form-input" id="fUnidades" type="number" min="1" placeholder="0" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Piezas por bulto</label>
+                  <input class="form-input" id="fPiezas" type="number" min="1" placeholder="0" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Bultos <span class="req">*</span></label>
+                  <input class="form-input" id="fBultos" type="number" min="1" placeholder="0" oninput="onBultosChange()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tipo de bulto</label>
+                  <select class="form-select" id="fTipo" onchange="onChg()">
+                    <option value="">—</option>
+                    <option>Caja</option><option>Tarima</option><option>Java</option>
+                    <option>Crate</option><option>Tubo</option><option>Sobre</option><option>Bulto</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Unit Weight (lbs)</label>
+                  <input class="form-input" id="fUnitWeight" placeholder="Ej. 35" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tracking Number</label>
+                  <input class="form-input" id="fTracking" placeholder="Tracking" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Carrier</label>
+                  <select class="form-select" id="fCarrier" onchange="onChg()">
+                    <option value="">—</option>
+                    <option>FedEx</option><option>UPS</option><option>DHL</option><option>XPO</option><option>Otro</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Vendor / Proveedor</label>
+                  <input class="form-input" id="fVendor" placeholder="MARTECH MEDICAL PRODUCTS" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Origin</label>
+                  <input class="form-input" id="fOrigin" placeholder="País / Ciudad" oninput="onChg()">
+                </div>
+              </div>
+
+              <!-- Maquinaria-only fields -->
+              <div id="maqFields" style="display:none;margin-top:4px;">
+                <div style="font-size:11px;font-weight:800;color:var(--navy);margin:10px 0 6px;padding-top:8px;border-top:1px solid var(--border);">⚙️ Campos adicionales — Maquinaria</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                  <div class="form-group">
+                    <label class="form-label">Part Model</label>
+                    <input class="form-input" id="fPartModel" placeholder="Model #" oninput="onChg()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Serial Number</label>
+                    <input class="form-input" id="fSerial" placeholder="S/N" oninput="onChg()">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Peso total -->
+              <div class="form-group" style="margin-top:4px;">
+                <label class="form-label">Peso Total</label>
+                <input class="form-input" id="fPeso" placeholder="Ej. 70lb" oninput="onChg()">
+              </div>
+
+              <!-- Notas -->
+              <div class="form-group" style="margin-top:4px;">
+                <label class="form-label">Notas</label>
+                <input class="form-input" id="fNotas" placeholder="Observaciones">
+              </div>
+
+              <!-- Bultos detail table (populated when bultos > 0) -->
+              <div id="bultosSection" style="display:none;margin-top:14px;">
+                <div style="font-size:11px;font-weight:800;color:var(--navy);margin-bottom:8px;">📦 Detalle por bulto <span style="font-size:10px;color:var(--text-300);font-weight:400;">(cada bulto = 1 fila en el Excel)</span></div>
+                <div style="overflow-x:auto;">
+                  <table class="bultos-table" id="bultosTable">
+                    <thead id="bultosHead"></thead>
+                    <tbody id="bultosBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Labels section -->
+              <div id="labelsSection" style="display:none;margin-top:16px;">
+                <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">🏷️ Labels</div>
+
+                <!-- 6x4 label -->
+                <div class="label-preview-box">
+                  <div class="label-preview-title">
+                    <span>Label 6×4 — <span id="l6title">Materia Prima</span></span>
+                    <div style="display:flex;gap:6px;">
+                      <button class="btn btn-ghost btn-xs" onclick="printLabel64()">🖨️ Imprimir</button>
+                      <button class="btn btn-ghost btn-xs" onclick="printAll64()">Todos (×<span id="bultosCount64">1</span>)</button>
+                    </div>
+                  </div>
+                  <div id="label64Container"></div>
+                </div>
+
+                <!-- 4x3 Maquinaria (shown only in maq mode) -->
+                <div class="label-preview-box" id="label43mSection" style="display:none;">
+                  <div class="label-preview-title">
+                    <span>Label 4×3 — Maquinaria</span>
+                    <button class="btn btn-ghost btn-xs" onclick="printLabel43m()">🖨️ Imprimir (1 por entrada)</button>
+                  </div>
+                  <div id="label43mContainer"></div>
+                </div>
+
+                <!-- Excel export -->
+                <button onclick="exportExcel()"
+                  style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(34,199,122,.25);background:rgba(34,199,122,.08);color:#16a34a;font-weight:700;font-size:12px;cursor:pointer;margin-bottom:10px;">
+                  📊 Exportar Excel — Merchandise Inspection Report
+                </button>
+              </div>
+
+              <!-- Save -->
+              <button class="btn-save" id="saveBtn" onclick="saveEntry()" disabled>
+                💾 Guardar Entrada en Inventario
+              </button>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI overlay -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-spin"></div>
+  <div class="ai-ol-text">🤖 Analizando imágenes...</div>
+  <div class="ai-ol-sub" id="aiSub">Procesando...</div>
+</div>
+
+<div class="bottom-nav" id="bottomNav"></div>
+<div class="toast" id="globalToast"></div>
+
+<script src="../js/core.js"></script>
+<script>
+// ── Globals ───────────────────────────────────────────────────────────────
+let USER, clienteData;
+let photos   = [];
+let stream   = null;
+let curMode  = 'mp';   // 'mp' | 'maq'
+let curSKU   = null;
+let aiDone   = false;
+let bultosRows = [];   // [{pn, desc, po, unidades, piezas, unitWeight, partModel, serial, tracking}]
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  USER = initPage('martech', ['admin','operador']);
+  if (!USER) return;
+
+  // Guard: Safran / non-Martech users → redirect to their entry module
+  if (USER.rol !== 'admin' && USER.cliente_codigo && USER.cliente_codigo !== 'MARTECH') {
+    location.href = 'ai-entry.html'; return;
+  }
+
+  // Load MARTECH client data
+  const { data } = await db.schema('ideascan').from('clientes')
+    .select('*').ilike('nombre','%martech%').maybeSingle();
+  clienteData = data;
+
+  await refreshSKU();
+  startCamera();
+});
+
+// ── Mode ──────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  curMode = mode;
+  document.getElementById('cardMP').classList.toggle('active', mode==='mp');
+  document.getElementById('cardMP').classList.toggle('mp', mode==='mp');
+  document.getElementById('cardMAQ').classList.toggle('active', mode==='maq');
+
+  const isMaq = mode === 'maq';
+  document.getElementById('maqFields').style.display    = isMaq ? '' : 'none';
+  document.getElementById('label43mSection').style.display = isMaq ? '' : 'none';
+  document.getElementById('panelIcon').textContent      = isMaq ? '⚙️' : '🧪';
+  document.getElementById('panelTitle').textContent     = isMaq ? 'Maquinaria — MARTECH' : 'Materia Prima — MARTECH';
+  document.getElementById('tipoInfo').innerHTML         = isMaq
+    ? '⚙️ Modo: Maquinaria — Label 6×4 + Label 4×3 + Excel'
+    : '🧪 Modo: Materia Prima — Label 6×4 + Excel';
+  document.getElementById('tipoInfo').style.background = isMaq ? 'rgba(13,43,122,.06)' : 'rgba(34,199,122,.06)';
+  document.getElementById('tipoInfo').style.borderColor = isMaq ? 'rgba(13,43,122,.2)' : 'rgba(34,199,122,.2)';
+  document.getElementById('tipoInfo').style.color       = isMaq ? '#0d2b7a' : '#16a34a';
+  document.getElementById('l6title').textContent        = isMaq ? 'Maquinaria' : 'Materia Prima';
+
+  // Rebuild bultos table headers
+  buildBultosTable();
+  if (aiDone) renderLabels();
+}
+
+// ── SKU / Inspection No. ─────────────────────────────────────────────────
+async function refreshSKU() {
+  document.getElementById('skuDisplay').textContent = '⏳';
+  const prefix = 'MAR';
+  curSKU = await generateSKU(prefix);   // MAR2602001
+  // Format as inspection number: E + DDMMYY + - + seq
+  const d   = new Date();
+  const dd  = String(d.getDate()).padStart(2,'0');
+  const mm  = String(d.getMonth()+1).padStart(2,'0');
+  const yy  = String(d.getFullYear()).slice(2);
+  const seq = curSKU.replace('MAR'+yy+mm,'').padStart(4,'0');
+  curSKU = `E${yy}${mm}${dd}-${seq}`;   // E260226-0021
+  document.getElementById('skuDisplay').textContent = curSKU;
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 } }, audio:false
+    });
+    const v = document.getElementById('camVideo');
+    v.srcObject = stream; await v.play();
+    document.getElementById('camStatus').textContent = '✅ Listo — captura labels y packings';
+    document.getElementById('captureBtn').disabled   = false;
+  } catch {
+    document.getElementById('camStatus').textContent = '📁 Sin cámara — usa "Subir imagen"';
+  }
+}
+
+function capturePhoto() {
+  const v = document.getElementById('camVideo');
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth||1280; c.height = v.videoHeight||960;
+  c.getContext('2d').drawImage(v,0,0);
+  addPhoto(c.toDataURL('image/jpeg',0.85));
+}
+
+function uploadPhotos(input) {
+  [...input.files].forEach(f => { const r=new FileReader(); r.onload=e=>addPhoto(e.target.result); r.readAsDataURL(f); });
+  input.value='';
+}
+
+function addPhoto(dataUrl) {
+  photos.push({dataUrl});
+  renderGallery();
+  setStep(1,true); setStep(2);
+  document.getElementById('analyzeBtn').disabled = false;
+  document.getElementById('camStatus').textContent = `✅ Foto ${photos.length} capturada`;
+}
+
+function removePhoto(i) {
+  photos.splice(i,1); renderGallery();
+  if (!photos.length) document.getElementById('analyzeBtn').disabled = true;
+}
+
+function renderGallery() {
+  const n = photos.length;
+  document.getElementById('photoCount').textContent = n;
+  document.getElementById('photoBadge').style.display = n?'':'none';
+  document.getElementById('photoCountLabel').textContent = n?`(${n})`:'';
+  let html = photos.map((p,i) => `
+    <div class="photo-thumb">
+      <img src="${p.dataUrl}">
+      <button class="del-ph" onclick="removePhoto(${i})">✕</button>
+      <div class="ph-num">${i+1}</div>
+    </div>`).join('');
+  html += `<label class="add-photo-btn"><div class="plus">＋</div><div>Agregar</div>
+    <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)"></label>`;
+  document.getElementById('photoGallery').innerHTML = html;
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────────────
+async function analyzeWithAI() {
+  if (!photos.length) { showToast('Captura al menos una foto','warning'); return; }
+  document.getElementById('aiOverlay').classList.add('open');
+  document.getElementById('analyzeBtn').disabled = true;
+  setStep(2,true); setStep(3);
+
+  const isMaq = curMode === 'maq';
+  const prompt = `Eres un sistema WMS logístico. Analiza esta imagen de un label, packing list o etiqueta de carrier.
+
+Extrae TODOS los datos visibles. Busca específicamente:
+- PART NUMBER (PN, P/N, Part No, Part Number)
+- PO (Purchase Order, P.O.#, PO#)
+- DESCRIPCIÓN del material o equipo
+- CANTIDAD / UNIDADES (QTY, Units, PCS, Piezas, Unidades)
+- TRACKING NUMBER (código alfanumérico largo de carrier)
+- CARRIER (FedEx, UPS, DHL, XPO, etc.)
+- VENDOR / PROVEEDOR / SHIPPER
+- ORIGIN (país/ciudad de origen)
+- UNIT WEIGHT (peso por unidad en lbs/kg)
+- PESO TOTAL (Total Weight, GW)
+${isMaq ? `- PART MODEL (Model, Model No)
+- SERIAL NUMBER (S/N, Serial, SER)` : ''}
+
+Responde SOLO con este JSON exacto, sin markdown:
+{
+  "numero_parte": "string o null",
+  "po": "string o null",
+  "descripcion": "string o null",
+  "cantidad": número_o_null,
+  "tracking_number": "string o null",
+  "carrier": "string o null",
+  "vendor": "string o null",
+  "origin": "string o null",
+  "unit_weight": "string o null",
+  "peso": "string o null",
+  ${isMaq ? '"part_model": "string o null",\n  "serial_number": "string o null",' : ''}
+  "confianza": número_0_100,
+  "campos_detectados": ["lista","de","campos"]
+}`;
+
+  try {
+    const results = [];
+    for (let i=0; i<photos.length; i++) {
+      document.getElementById('aiSub').textContent = `Analizando imagen ${i+1} de ${photos.length}...`;
+      const base64 = photos[i].dataUrl.split(',')[1];
+      const mime   = photos[i].dataUrl.split(';')[0].split(':')[1]||'image/jpeg';
+      try {
+        const raw    = await callVision(base64, mime, prompt);
+        console.log(`[MARTECH AI] img ${i+1}:`, raw);
+        if (raw?.error) { console.warn('EF error:', raw.message); continue; }
+        const parsed = parseAIJson(raw);
+        if (parsed && !parsed.error) results.push(parsed);
+      } catch(e) { console.warn(`img ${i+1}:`, e); }
+    }
+
+    if (!results.length) {
+      showToast('Sin resultados AI. Llena los campos manualmente.','warning');
+    } else {
+      const merged = mergeAll(results);
+      fillForm(merged);
+      showConf(merged.confianza||65, merged.campos_detectados||[]);
+      aiDone = true;
+      setStep(3,true); setStep(4);
+      buildBultosTable();
+      showToast(`✅ ${merged.campos_detectados?.length||0} campos detectados`,'success');
+    }
+  } catch(e) {
+    showToast('Error AI: '+e.message,'error');
+  } finally {
+    document.getElementById('aiOverlay').classList.remove('open');
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function parseAIJson(raw) {
+  if (raw && typeof raw==='object' && !raw.error) {
+    if ('confianza' in raw || 'numero_parte' in raw || 'campos_detectados' in raw) return raw;
+  }
+  const text = raw?.content?.[0]?.text || raw?.text || JSON.stringify(raw);
+  try {
+    const clean = text.replace(/```json|```/g,'').trim();
+    const match = clean.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch { return null; }
+}
+
+function mergeAll(arr) {
+  const keys = ['numero_parte','po','descripcion','cantidad','tracking_number','carrier','vendor','origin','unit_weight','peso','part_model','serial_number'];
+  const merged = {};
+  keys.forEach(k => {
+    merged[k] = arr.map(r=>r[k]).find(v=>v && v!=='null' && String(v).trim()!='') ?? null;
+  });
+  merged.confianza = Math.max(...arr.map(r=>r.confianza||0));
+  const all = new Set();
+  arr.forEach(r=>(r.campos_detectados||[]).forEach(c=>all.add(c)));
+  merged.campos_detectados = [...all];
+  return merged;
+}
+
+function fillForm(d) {
+  const map = {
+    fPN: d.numero_parte, fPO: d.po, fDesc: d.descripcion,
+    fUnidades: d.cantidad, fTracking: d.tracking_number,
+    fVendor: d.vendor, fOrigin: d.origin,
+    fUnitWeight: d.unit_weight, fPeso: d.peso,
+    fPartModel: d.part_model, fSerial: d.serial_number,
+  };
+  Object.entries(map).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val) { el.value = val; el.classList.add('field-auto'); }
+  });
+  if (d.carrier) {
+    const sel = document.getElementById('fCarrier');
+    const match = ['FedEx','UPS','DHL','XPO'].find(o=>(d.carrier||'').toUpperCase().includes(o.toUpperCase()));
+    sel.value = match || (d.carrier ? 'Otro' : '');
+    if (sel.value) sel.classList.add('field-auto');
+  }
+}
+
+function showConf(pct, campos) {
+  document.getElementById('confSection').style.display = '';
+  document.getElementById('confPct').textContent = pct+'%';
+  const fill = document.getElementById('confFill');
+  fill.style.width = pct+'%';
+  fill.style.background = pct>=75?'#22c77a':pct>=50?'#f59e0b':'#ef4444';
+  document.getElementById('confFields').textContent = campos.length ? 'Detectados: '+campos.join(', ') : '';
+}
+
+// ── Steps ─────────────────────────────────────────────────────────────────
+function setStep(n, done=false) {
+  const el=document.getElementById('s'+n);
+  if (!el) return;
+  el.classList.remove('active','done');
+  el.classList.add(done?'done':'active');
+}
+
+// ── Bultos table ──────────────────────────────────────────────────────────
+function onBultosChange() {
+  buildBultosTable();
+  onChg();
+}
+
+function buildBultosTable() {
+  const n = parseInt(document.getElementById('fBultos').value) || 0;
+  if (!n) { document.getElementById('bultosSection').style.display='none'; return; }
+  document.getElementById('bultosSection').style.display = '';
+  setStep(4,true); setStep(5);
+
+  const isMaq = curMode === 'maq';
+
+  // Build header
+  const hdrs = ['#','P/N','Descripción','PO','Unidades','Piezas','Unit Weight lb'];
+  if (isMaq) hdrs.push('Part Model','Serial');
+  hdrs.push('Tracking');
+
+  document.getElementById('bultosHead').innerHTML = `<tr>${hdrs.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+
+  // Preserve existing data
+  while (bultosRows.length < n) {
+    const prev = bultosRows[bultosRows.length-1] || {};
+    bultosRows.push({
+      pn:         prev.pn        || document.getElementById('fPN').value,
+      desc:       prev.desc      || document.getElementById('fDesc').value,
+      po:         prev.po        || document.getElementById('fPO').value,
+      unidades:   prev.unidades  || document.getElementById('fUnidades').value,
+      piezas:     prev.piezas    || document.getElementById('fPiezas').value,
+      unitWeight: prev.unitWeight|| document.getElementById('fUnitWeight').value,
+      partModel:  prev.partModel || document.getElementById('fPartModel')?.value||'',
+      serial:     prev.serial    || document.getElementById('fSerial')?.value||'',
+      tracking:   prev.tracking  || document.getElementById('fTracking').value,
+    });
+  }
+  bultosRows = bultosRows.slice(0, n);
+
+  let tbody = '';
+  for (let i=0; i<n; i++) {
+    const r = bultosRows[i];
+    const cols = [
+      `<td style="color:#666;font-weight:700;text-align:center">${i+1}</td>`,
+      `<td><input value="${r.pn||''}" onchange="bultosRows[${i}].pn=this.value;onChg()" placeholder="P/N"></td>`,
+      `<td><input value="${r.desc||''}" onchange="bultosRows[${i}].desc=this.value" placeholder="Descripción"></td>`,
+      `<td><input value="${r.po||''}" onchange="bultosRows[${i}].po=this.value;onChg()" placeholder="PO"></td>`,
+      `<td><input value="${r.unidades||''}" type="number" onchange="bultosRows[${i}].unidades=this.value" style="width:60px"></td>`,
+      `<td><input value="${r.piezas||''}" type="number" onchange="bultosRows[${i}].piezas=this.value" style="width:55px"></td>`,
+      `<td><input value="${r.unitWeight||''}" onchange="bultosRows[${i}].unitWeight=this.value" style="width:65px" placeholder="lbs"></td>`,
+    ];
+    if (isMaq) {
+      cols.push(`<td><input value="${r.partModel||''}" onchange="bultosRows[${i}].partModel=this.value" placeholder="Model"></td>`);
+      cols.push(`<td><input value="${r.serial||''}" onchange="bultosRows[${i}].serial=this.value" placeholder="S/N"></td>`);
+    }
+    cols.push(`<td><input value="${r.tracking||''}" onchange="bultosRows[${i}].tracking=this.value" placeholder="Tracking"></td>`);
+    tbody += `<tr>${cols.join('')}</tr>`;
+  }
+  document.getElementById('bultosBody').innerHTML = tbody;
+}
+
+// ── onChange trigger ──────────────────────────────────────────────────────
+function onChg() {
+  if (document.getElementById('fBultos').value && aiDone) {
+    renderLabels();
+    document.getElementById('labelsSection').style.display = '';
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('bultosCount64').textContent = document.getElementById('fBultos').value||1;
+  }
+}
+
+// ── Gather form data ──────────────────────────────────────────────────────
+function gd() {
+  const d = new Date();
+  return {
+    inspNo:     curSKU||'—',
+    tipo:       curMode==='maq' ? 'Maquinaria' : 'Materia Prima',
+    pn:         document.getElementById('fPN').value,
+    po:         document.getElementById('fPO').value,
+    desc:       document.getElementById('fDesc').value,
+    unidades:   document.getElementById('fUnidades').value,
+    piezas:     document.getElementById('fPiezas').value,
+    bultos:     document.getElementById('fBultos').value || '1',
+    tipoBulto:  document.getElementById('fTipo').value,
+    unitWeight: document.getElementById('fUnitWeight').value,
+    tracking:   document.getElementById('fTracking').value,
+    carrier:    document.getElementById('fCarrier').value,
+    vendor:     document.getElementById('fVendor').value,
+    origin:     document.getElementById('fOrigin').value,
+    peso:       document.getElementById('fPeso').value,
+    partModel:  document.getElementById('fPartModel')?.value||'',
+    serial:     document.getElementById('fSerial')?.value||'',
+    notas:      document.getElementById('fNotas').value,
+    fecha:      `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`,
+    fechaISO:   d.toISOString().slice(0,10),
+    operador:   USER.nombre||USER.username||'—',
+  };
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────
+function renderLabels() {
+  const d = gd();
+  render64(d, 1);
+  if (curMode==='maq') render43m(d);
+  document.getElementById('labelsSection').style.display = '';
+  document.getElementById('bultosCount64').textContent  = d.bultos;
+  document.getElementById('saveBtn').disabled = false;
+  setStep(5,true); setStep(6);
+}
+
+// ─── Label 6×4 (Materia Prima & Maquinaria) ───────────────────────────────
+function render64(d, bNum) {
+  const total   = parseInt(d.bultos)||1;
+  const bStr    = `${bNum} / ${total}`;
+  const rowData = bultosRows[bNum-1] || {};
+  const pn      = rowData.pn || d.pn;
+  const po      = rowData.po || d.po;
+  const piezas  = rowData.piezas || d.piezas;
+  const tracking= rowData.tracking || d.tracking;
+
+  // Partida No = zero-padded bulto number
+  const partidaNo = String(bNum).padStart(6,'0');
+
+  const html = `
+    <div class="label-6x4" id="lbl64">
+      <!-- Header: logo + Inspection No -->
+      <div class="l6-head">
+        <div class="l6-logo-wrap">
+          <div class="l6-logo-icon">🌐</div>
+          <div class="l6-logo-name">CCA</div>
+          <div class="l6-logo-name" style="font-size:9px;">GROUP</div>
+          <div class="l6-logo-sub">Connecting Markets</div>
+        </div>
+        <div class="l6-insp-no">
+          <div class="l6-insp-label">Inspection No.</div>
+          <div class="l6-insp-val">${d.inspNo}</div>
+        </div>
+        <div style="text-align:right;">
+          <canvas id="qr64" width="72" height="72"></canvas>
+        </div>
+      </div>
+
+      <!-- Main body: QR left, data right -->
+      <div class="l6-body">
+        <div class="l6-left">
+          <div style="font-size:8px;font-weight:700;color:#666;text-align:center;">QTY BARCODE</div>
+          <svg id="bcQty64"></svg>
+        </div>
+        <div class="l6-right">
+          <!-- PN + barcode -->
+          <div class="l6-pn-row">
+            <div>
+              <div class="l6-pn-label">Part Number</div>
+              <div class="l6-pn-val">${pn||'—'}</div>
+            </div>
+            <div class="l6-pn-bc"><svg id="bcPN64"></svg></div>
+          </div>
+          <!-- QTY -->
+          <div class="l6-qty-row">
+            <div class="l6-qty-label">QTY</div>
+            <svg id="bcQtySmall" style="height:20px;max-width:70px;"></svg>
+            <div class="l6-qty-val">${piezas ? Number(piezas).toLocaleString() : '—'}</div>
+          </div>
+          <!-- Inspection No + Partida -->
+          <div class="l6-info-row">
+            <div class="l6-info-cell"><span class="l6-ik">Inspection No.</span><span class="l6-iv">${d.inspNo}</span></div>
+            <div class="l6-info-cell"><span class="l6-ik">PARTIDA No.</span><span class="l6-iv">${partidaNo}</span></div>
+          </div>
+          <!-- PO + barcode -->
+          <div class="l6-po-row">
+            <span class="l6-po-label">PO</span>
+            <span class="l6-po-val">${po||'—'}</span>
+            <svg id="bcPO64" style="height:22px;max-width:90px;margin-left:6px;"></svg>
+          </div>
+          <!-- Company -->
+          <div class="l6-company">${d.vendor||'MARTECH MEDICAL PRODUCTS'}</div>
+        </div>
+      </div>
+
+      <!-- Tracking -->
+      <div class="l6-track-row">
+        <span class="l6-track-label">TRACKING:</span>
+        <span class="l6-track-val">${tracking||'—'}</span>
+      </div>
+
+      <!-- Footer: date + description -->
+      <div class="l6-footer">
+        <div class="l6-fecha-wrap">
+          <div class="l6-fecha-label">Fecha Entrada</div>
+          <div class="l6-fecha-val">${d.fechaISO}</div>
+        </div>
+        <div class="l6-desc">${d.desc||'—'}</div>
+        <div style="font-size:10px;font-weight:700;color:#666;white-space:nowrap;">${bStr}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('label64Container').innerHTML = html;
+
+  // Barcodes
+  const skuForQR = `INSP:${d.inspNo}|PN:${pn}|QTY:${piezas}|PO:${po}|TRACKING:${tracking}|FECHA:${d.fechaISO}`;
+  try { QRCode.toCanvas(document.getElementById('qr64'), skuForQR, { width:72, margin:1 }); } catch {}
+
+  const bcTarget = pn||d.inspNo;
+  try { JsBarcode('#bcPN64',   bcTarget,          { format:'CODE128', width:1.2, height:28, displayValue:true,  fontSize:9,  textMargin:2, margin:0 }); } catch {}
+  try { JsBarcode('#bcQty64',  String(piezas||'1'),{ format:'CODE128', width:1.4, height:40, displayValue:true,  fontSize:10, textMargin:2, margin:0 }); } catch {}
+  try { JsBarcode('#bcQtySmall',String(piezas||'1'),{format:'CODE128', width:1.0, height:20, displayValue:false, margin:0 }); } catch {}
+  try { JsBarcode('#bcPO64',   po||'000000',       { format:'CODE128', width:1.0, height:22, displayValue:true,  fontSize:9,  textMargin:2, margin:0 }); } catch {}
+}
+
+// ─── Label 4×3 Maquinaria ─────────────────────────────────────────────────
+function render43m(d) {
+  const total = parseInt(d.bultos)||1;
+  // Build parts rows from bultosRows
+  const partsRows = bultosRows.length
+    ? bultosRows.map((r,i) => `
+        <tr>
+          <td>${r.po||d.po||'—'}</td>
+          <td>${r.pn||d.pn||'—'}</td>
+          <td style="text-align:right;">${r.piezas||d.piezas||''} ${r.piezas||d.piezas?'PCS':''}</td>
+        </tr>`)
+    : [`<tr><td>${d.po||'—'}</td><td>${d.pn||'—'}</td><td style="text-align:right;">${d.piezas||''} ${d.piezas?'PCS':''}</td></tr>`];
+
+  document.getElementById('label43mContainer').innerHTML = `
+    <div class="label-4x3m" id="lbl43m">
+      <!-- Header -->
+      <div class="l4m-head">
+        <div class="l4m-logo">
+          <div class="l4m-logo-icon">🌐</div>
+          <div class="l4m-logo-name">CCA GROUP</div>
+          <div class="l4m-logo-sub">Connecting Markets</div>
+        </div>
+        <div class="l4m-ref">
+          <div class="l4m-ref-label">Ref / Inspection No.</div>
+          <div class="l4m-ref-val">${d.inspNo}</div>
+        </div>
+      </div>
+
+      <!-- Parts table -->
+      <table class="l4m-parts-table">
+        <thead>
+          <tr>
+            <th style="width:90px;">Po</th>
+            <th>Part. No</th>
+            <th style="width:60px;text-align:right;">Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${partsRows.join('')}
+        </tbody>
+      </table>
+
+      <!-- Bulto count centered -->
+      <div style="text-align:center;padding:4px;font-size:12px;font-weight:900;border-bottom:1px solid #ccc;">
+        ${total} / ${total}
+      </div>
+
+      <!-- Footer -->
+      <div class="l4m-footer">
+        <div>
+          <div class="l4m-fk">Fecha:</div>
+          <div class="l4m-fv">${d.fecha.replace(/\//g,'/')}</div>
+        </div>
+        <div>
+          <div class="l4m-fk">Ref:</div>
+          <div class="l4m-fv">${d.inspNo}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Print functions ────────────────────────────────────────────────────────
+const PRINT_CSS = `
+  body{margin:6px;font-family:Arial,sans-serif;}
+  @media print{@page{margin:3mm}}
+  .label-6x4,.label-4x3m{background:white;border:1.5px solid #ccc;border-radius:4px;overflow:hidden;page-break-inside:avoid;}
+  .l6-head{display:flex;align-items:center;padding:6px 10px;gap:10px;border-bottom:1.5px solid #000;}
+  .l6-logo-wrap{display:flex;flex-direction:column;align-items:center;min-width:70px;}
+  .l6-logo-name{font-weight:900;font-size:13px;color:#000;line-height:1;}
+  .l6-logo-sub{font-size:7px;color:#555;letter-spacing:1px;}
+  .l6-insp-no{flex:1;text-align:center;}
+  .l6-insp-label{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;}
+  .l6-insp-val{font-family:monospace;font-size:20px;font-weight:900;color:#000;}
+  .l6-body{display:grid;grid-template-columns:70px 1fr;}
+  .l6-left{border-right:1.5px solid #000;padding:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
+  .l6-right{padding:6px 10px;}
+  .l6-pn-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;}
+  .l6-pn-label{font-size:8px;font-weight:700;color:#555;text-transform:uppercase;}
+  .l6-pn-val{font-family:monospace;font-size:13px;font-weight:900;color:#000;}
+  .l6-pn-bc svg,.l6-po-bc svg{height:28px;max-width:130px;}
+  .l6-qty-row{display:flex;align-items:baseline;gap:10px;margin:4px 0;}
+  .l6-qty-label{font-size:9px;font-weight:700;color:#555;width:50px;}
+  .l6-qty-val{font-size:28px;font-weight:900;color:#000;margin-left:auto;}
+  .l6-info-row{display:flex;gap:16px;font-size:10px;margin-top:4px;}
+  .l6-info-cell{display:flex;gap:4px;}
+  .l6-ik{font-weight:700;color:#333;} .l6-iv{color:#111;}
+  .l6-po-row{display:flex;align-items:center;gap:8px;margin-top:3px;}
+  .l6-po-label{font-size:8px;font-weight:700;color:#555;min-width:20px;}
+  .l6-po-val{font-size:11px;font-weight:700;color:#000;}
+  .l6-company{font-size:10px;font-weight:700;color:#000;border-top:1px solid #ddd;padding-top:2px;margin-top:3px;}
+  .l6-track-row{border-top:1.5px solid #000;padding:4px 10px;display:flex;align-items:center;gap:8px;}
+  .l6-track-label{font-size:10px;font-weight:700;color:#000;min-width:70px;}
+  .l6-track-val{font-size:14px;font-weight:900;color:#000;font-family:monospace;}
+  .l6-footer{display:flex;align-items:center;gap:8px;border-top:1.5px solid #000;padding:4px 10px;font-size:10px;}
+  .l6-fecha-wrap{display:flex;flex-direction:column;}
+  .l6-fecha-label{font-size:7px;font-weight:700;color:#555;}
+  .l6-fecha-val{font-size:10px;font-weight:700;color:#000;}
+  .l6-desc{font-size:10px;font-weight:700;color:#000;flex:1;}
+  /* 4x3 maq */
+  .l4m-head{display:flex;align-items:center;padding:5px 8px;border-bottom:1.5px solid #000;gap:8px;}
+  .l4m-logo{display:flex;flex-direction:column;align-items:center;min-width:55px;}
+  .l4m-logo-name{font-weight:900;font-size:10px;color:#000;}
+  .l4m-logo-sub{font-size:6px;color:#555;}
+  .l4m-ref{flex:1;text-align:center;}
+  .l4m-ref-label{font-size:8px;color:#555;}
+  .l4m-ref-val{font-family:monospace;font-size:15px;font-weight:900;color:#000;}
+  .l4m-parts-table{width:100%;border-collapse:collapse;font-size:9px;}
+  .l4m-parts-table th{background:#f0f0f0;border:1px solid #ccc;padding:3px 6px;font-weight:700;font-size:8px;}
+  .l4m-parts-table td{border:1px solid #ccc;padding:3px 6px;}
+  .l4m-footer{display:grid;grid-template-columns:1fr 1fr;border-top:1.5px solid #000;padding:4px 8px;gap:4px;font-size:9px;}
+  .l4m-fk{font-weight:700;color:#333;} .l4m-fv{color:#000;}
+`;
+
+function doPrint(html, title='') {
+  const w = window.open('','_blank','width=620,height=820');
+  w.document.write(`<html><head><title>${title}</title>
+    <style>${PRINT_CSS}</style>
+    </head><body onload="window.print()">${html}</body></html>`);
+  w.document.close();
+}
+
+function printLabel64() {
+  const el = document.getElementById('lbl64');
+  if (!el) { showToast('Analiza con AI primero','warning'); return; }
+  doPrint(el.outerHTML, 'Label 6x4 — '+curSKU);
+}
+
+function printAll64() {
+  const d      = gd();
+  const total  = parseInt(d.bultos)||1;
+  let html     = '';
+
+  for (let i=0; i<total; i++) {
+    // Re-render with bulto number
+    render64(d, i+1);
+    const el = document.getElementById('lbl64');
+    if (el) html += `<div style="page-break-after:${i<total-1?'always':'auto'}">${el.outerHTML}</div>`;
+  }
+  // Restore preview to bulto 1
+  render64(d, 1);
+  doPrint(html, `Labels 6x4 × ${total} — ${curSKU}`);
+}
+
+function printLabel43m() {
+  const el = document.getElementById('lbl43m');
+  if (!el) { showToast('Analiza con AI primero','warning'); return; }
+  doPrint(el.outerHTML, 'Label 4x3 Maquinaria — '+curSKU);
+}
+
+// ── Excel Export — Merchandise Inspection Report ──────────────────────────
+function exportExcel() {
+  if (!window.XLSX) { showToast('XLSX no cargado','error'); return; }
+  const d     = gd();
+  const total = parseInt(d.bultos)||1;
+  const isMaq = curMode === 'maq';
+
+  // Use XLSX to create HTML-style workbook matching the original format
+  const wb = XLSX.utils.book_new();
+
+  // Build rows array: header block + column headers + data rows
+  const rows = [];
+
+  // Title row
+  rows.push([`Merchandise Inspection Report — ${d.inspNo}`,'','','','','','','','','','','','']);
+
+  // Info row 1
+  rows.push([`Fecha: ${d.fecha}`, '', '', '',
+             `Carrier: ${d.carrier||''}`, '', '',
+             `Tipo: ${d.tipo}`, '', '',
+             `Bultos: ${d.bultos} (${d.tipoBulto||'—'})`, '', '']);
+
+  // Info row 2
+  rows.push([`Peso Total: ${d.peso||'—'}`, '', '', '',
+             `Operador: ${d.operador}`, '', '', '', '', '', '', '', '']);
+
+  // Empty row
+  rows.push(Array(13).fill(''));
+
+  // Column headers
+  const hdrs = ['#','Part Number','Descripcion','PO','Unidades','Piezas',
+                'unit weight lb','Part Model','Serial number','Tracking Number',
+                'Vendor','Origin'];
+  if (!isMaq) hdrs.push('Notas');
+  rows.push(hdrs);
+
+  // Data rows — one per bulto
+  for (let i=0; i<total; i++) {
+    const r   = bultosRows[i] || {};
+    const row = [
+      i+1,
+      r.pn        || d.pn,
+      r.desc      || d.desc,
+      r.po        || d.po,
+      r.unidades  || d.unidades,
+      r.piezas    || d.piezas,
+      r.unitWeight|| d.unitWeight,
+      isMaq ? (r.partModel||d.partModel) : '',
+      isMaq ? (r.serial||d.serial) : '',
+      r.tracking  || d.tracking,
+      d.vendor,
+      d.origin,
+    ];
+    if (!isMaq) row.push(d.notas);
+    rows.push(row);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:5},{wch:16},{wch:32},{wch:14},{wch:10},{wch:10},
+    {wch:14},{wch:16},{wch:18},{wch:22},{wch:22},{wch:14},{wch:20}
+  ];
+
+  // Merge title row across 13 cols
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:12}},
+    {s:{r:1,c:0}, e:{r:1,c:3}},
+    {s:{r:1,c:4}, e:{r:1,c:6}},
+    {s:{r:1,c:7}, e:{r:1,c:9}},
+    {s:{r:1,c:10},e:{r:1,c:12}},
+    {s:{r:2,c:0}, e:{r:2,c:3}},
+    {s:{r:2,c:4}, e:{r:2,c:12}},
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+  XLSX.writeFile(wb, `Martech_${d.inspNo}_${d.fechaISO}.xlsx`);
+  showToast('✅ Excel descargado: Martech_'+d.inspNo+'.xlsx','success');
+}
+
+// ── Save to Supabase ──────────────────────────────────────────────────────
+async function saveEntry() {
+  const d = gd();
+  if (!d.pn) { showToast('Ingresa el Part Number','warning'); return; }
+  if (!d.bultos||d.bultos<1) { showToast('Ingresa cantidad de bultos','warning'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = '⏳ Guardando...';
+
+  try {
+    const payload = {
+      sku:             curSKU,
+      cliente_id:      clienteData?.id || null,
+      almacen_id:      USER.almacen_id || null,
+      numero_parte:    d.pn,
+      po:              d.po,
+      serial_number:   d.serial||null,
+      descripcion:     d.desc,
+      cantidad:        parseInt(d.unidades)||0,
+      bultos:          parseInt(d.bultos),
+      tipo_bulto:      d.tipoBulto||null,
+      tracking_number: d.tracking||null,
+      carrier:         d.carrier||null,
+      vendor:          d.vendor||null,
+      peso:            d.peso||null,
+      area:            'OPS',
+      estado:          'activo',
+      operador_id:     USER.id,
+      fecha_entrada:   new Date().toISOString(),
+    };
+    const { error } = await db.schema('ideascan').from('inventario').insert(payload);
+    if (error) throw error;
+
+    setStep(6,true);
+    showToast(`✅ Entrada guardada — ${curSKU}`,'success',5000);
+    btn.textContent = '✅ Guardado';
+
+    setTimeout(() => { if (confirm('¿Registrar otra entrada?')) resetAll(); }, 3500);
+  } catch(e) {
+    showToast('Error: '+e.message,'error');
+    btn.disabled = false; btn.textContent = '💾 Guardar Entrada en Inventario';
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────
+async function resetAll() {
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  photos=[]; aiDone=false; curSKU=null; bultosRows=[];
+
+  ['fPN','fPO','fDesc','fUnidades','fPiezas','fBultos','fUnitWeight',
+   'fTracking','fVendor','fOrigin','fPeso','fNotas','fPartModel','fSerial'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.value='';el.classList.remove('field-auto');}
+  });
+  document.getElementById('fCarrier').value='';
+  document.getElementById('fTipo').value='';
+  document.getElementById('bultosSection').style.display='none';
+  document.getElementById('labelsSection').style.display='none';
+  document.getElementById('confSection').style.display='none';
+  document.getElementById('saveBtn').disabled=true;
+  document.getElementById('analyzeBtn').disabled=true;
+
+  for(let i=1;i<=6;i++){
+    const el=document.getElementById('s'+i);
+    el.classList.remove('active','done');
+    if(i===1) el.classList.add('active');
+  }
+
+  await refreshSKU();
+  startCamera();
+  showToast('🔄 Lista para nueva entrada','info');
+}
+</script>
+</body>
+</html>

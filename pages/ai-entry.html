@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Entrada con AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🤖</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+.entry-grid{display:grid;grid-template-columns:1fr 430px;gap:16px;align-items:start;}
+@media(max-width:960px){.entry-grid{grid-template-columns:1fr;}}
+
+/* Steps */
+.steps-bar{display:flex;background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:18px;}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px;border-right:1px solid var(--border);gap:3px;opacity:.3;transition:opacity .2s;}
+.step:last-child{border-right:none;}
+.step.active{opacity:1;background:rgba(13,43,122,.03);}
+.step.done{opacity:.75;}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--text-300);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.step.active .step-num{background:var(--navy);color:white;}
+.step.done .step-num{background:var(--success);color:white;}
+.step-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-300);text-align:center;}
+.step.active .step-label,.step.done .step-label{color:var(--navy);}
+
+/* Camera */
+.camera-box{background:#060c1f;border-radius:16px;overflow:hidden;position:relative;aspect-ratio:4/3;}
+.camera-box video{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-guide{position:absolute;inset:0;pointer-events:none;}
+.cg{position:absolute;width:36px;height:36px;border:3px solid var(--cyan);}
+.cg.tl{top:14px;left:14px;border-right:none;border-bottom:none;border-radius:4px 0 0 0;}
+.cg.tr{top:14px;right:14px;border-left:none;border-bottom:none;border-radius:0 4px 0 0;}
+.cg.bl{bottom:14px;left:14px;border-right:none;border-top:none;border-radius:0 0 0 4px;}
+.cg.br{bottom:14px;right:14px;border-left:none;border-top:none;border-radius:0 0 4px 0;}
+.scan-line{position:absolute;left:14px;right:14px;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:sl 2.5s ease-in-out infinite;}
+@keyframes sl{0%,100%{top:10%}50%{top:85%}}
+.cam-status{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);backdrop-filter:blur(8px);color:white;font-size:12px;font-weight:600;padding:5px 16px;border-radius:20px;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;}
+.cam-badge{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.65);color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+
+/* Gallery */
+.photo-gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;}
+.photo-thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:2px solid var(--border);cursor:pointer;transition:border-color .15s;}
+.photo-thumb:hover{border-color:var(--cyan);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.del-ph{position:absolute;top:3px;right:3px;background:rgba(239,68,68,.85);color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;}
+.photo-thumb:hover .del-ph{display:flex;}
+.ph-num{position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.6);color:white;font-size:9px;font-weight:800;padding:1px 5px;border-radius:4px;}
+.add-photo-btn{aspect-ratio:4/3;border-radius:8px;border:2px dashed var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;color:var(--text-300);font-size:11px;font-weight:700;gap:4px;}
+.add-photo-btn:hover{border-color:var(--cyan);color:var(--navy);background:rgba(0,194,255,.04);}
+.add-photo-btn .plus{font-size:22px;}
+
+/* Controls */
+.cam-controls{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+.btn-capture{flex:1;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#0d2b7a,#2d6ef5);color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(13,43,122,.3);transition:all .2s;min-width:160px;}
+.btn-capture:hover{transform:translateY(-1px);}
+.btn-capture:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-analyze{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#00c2ff,#0d2b7a);color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 6px 28px rgba(0,194,255,.3);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;}
+.btn-analyze:hover{transform:translateY(-2px);}
+.btn-analyze:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* Confidence */
+.conf-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:6px;}
+.conf-fill{height:100%;border-radius:3px;transition:width .6s;}
+
+/* Form panel */
+.form-panel{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;}
+.form-panel-header{background:linear-gradient(135deg,#0d2b7a,#1a3d9e);padding:14px 18px;display:flex;align-items:center;gap:12px;}
+.form-panel-title{color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;}
+.form-panel-body{padding:16px;}
+.field-auto{background:rgba(0,194,255,.07)!important;border-color:rgba(0,194,255,.4)!important;}
+
+/* Area chips */
+.area-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.area-chip{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;color:var(--text-500);}
+.area-chip:hover{border-color:var(--navy);color:var(--navy);}
+.area-chip.sel{background:var(--navy);color:white;border-color:var(--navy);}
+
+/* SKU box */
+.sku-display{background:linear-gradient(135deg,rgba(13,43,122,.06),rgba(0,194,255,.06));border:1px solid rgba(0,194,255,.25);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.sku-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:900;color:var(--navy);flex:1;}
+.sku-lbl{font-size:9px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;}
+
+/* Labels preview */
+.label-preview-box{background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+.label-preview-title{font-size:10px;font-weight:800;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+
+/* Label 4x3 styles */
+/* ── Label 4x3 — Safran style ── */
+.label-4x3{
+  width:100%;background:white;border:1.5px solid #ccc;
+  font-family:'Inter',sans-serif;border-radius:6px;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);overflow:hidden;
+}
+/* Header bar */
+.l4-header{
+  text-align:center;padding:5px 8px;
+  font-size:11px;font-weight:700;color:#444;letter-spacing:.5px;
+  border-bottom:1px solid #ddd;background:#fafafa;
+}
+/* SKU + QR row */
+.l4-top{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 4px;}
+.l4-sku-big{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:900;color:#000;letter-spacing:1px;}
+/* Barcode */
+.l4-bc{text-align:center;padding:0 10px 4px;}
+.l4-bc svg{max-width:100%;height:48px;}
+/* Divider */
+.l4-divider{border:none;border-top:1px solid #ddd;margin:0 10px;}
+/* Info rows */
+.l4-info{padding:6px 10px;display:flex;flex-direction:column;gap:4px;}
+.l4-row{display:flex;align-items:baseline;gap:0;}
+.l4-k{font-size:11px;font-weight:700;color:#000;min-width:90px;}
+.l4-v{font-size:11px;font-weight:400;color:#111;}
+/* Area section */
+.l4-area-wrap{border-top:1px solid #ddd;border-bottom:1px solid #ddd;margin:4px 0;padding:4px 10px;text-align:center;}
+.l4-area-label{font-size:10px;font-style:italic;color:#444;margin-bottom:2px;}
+.l4-area-val{font-size:26px;font-weight:900;color:#000;letter-spacing:2px;}
+/* Footer */
+.l4-footer{padding:4px 10px;font-size:10px;color:#666;}
+/* QR */
+.l4-qr canvas{width:60px!important;height:60px!important;}
+
+/* Label 3x2 styles */
+/* Label 3x2 — same design as 4x3, no QR, 1 per entry */
+.label-3x2{
+  width:100%;background:white;border:1.5px solid #ccc;
+  font-family:'Inter',sans-serif;border-radius:6px;
+  box-shadow:0 1px 6px rgba(0,0,0,.12);overflow:hidden;
+}
+
+/* AI overlay */
+.ai-overlay{position:fixed;inset:0;background:rgba(6,12,31,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px;}
+.ai-overlay.open{display:flex;}
+.ai-spin{width:64px;height:64px;border-radius:50%;border:4px solid rgba(0,194,255,.2);border-top-color:var(--cyan);animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-ol-text{color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:700;text-align:center;}
+.ai-ol-sub{color:rgba(255,255,255,.5);font-size:12px;text-align:center;}
+
+/* Save button */
+.btn-save{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,#22c77a,#16a34a);color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 6px 28px rgba(34,199,122,.3);transition:all .2s;margin-top:12px;}
+.btn-save:hover{transform:translateY(-2px);}
+.btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+    <div class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">Entrada <span>con AI</span></div>
+      <div class="header-actions">
+        <span id="clienteBadge" class="badge badge-navy" style="font-size:11px;padding:5px 11px;"></span>
+        <button class="header-btn" onclick="resetAll()" title="Nueva entrada">🔄 Nueva</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <!-- Steps bar -->
+      <div class="steps-bar">
+        <div class="step active" id="s1"><div class="step-num">1</div><div class="step-label">📷 Fotos</div></div>
+        <div class="step"        id="s2"><div class="step-num">2</div><div class="step-label">🤖 AI</div></div>
+        <div class="step"        id="s3"><div class="step-num">3</div><div class="step-label">✏️ Datos</div></div>
+        <div class="step"        id="s4"><div class="step-num">4</div><div class="step-label">🏷️ Labels</div></div>
+        <div class="step"        id="s5"><div class="step-num">5</div><div class="step-label">✅ Guardar</div></div>
+      </div>
+
+      <div class="entry-grid">
+        <!-- ══ LEFT: Camera + Photos ══ -->
+        <div>
+          <div class="camera-box" id="cameraBox">
+            <video id="camVideo" autoplay playsinline muted></video>
+            <div class="cam-guide">
+              <div class="cg tl"></div><div class="cg tr"></div>
+              <div class="cg bl"></div><div class="cg br"></div>
+              <div class="scan-line"></div>
+            </div>
+            <div class="cam-status" id="camStatus">📷 Iniciando cámara...</div>
+            <div class="cam-badge" id="photoBadge" style="display:none;">📸 <span id="photoCount">0</span> foto(s)</div>
+          </div>
+
+          <div class="cam-controls">
+            <button class="btn-capture" id="captureBtn" onclick="capturePhoto()" disabled>
+              📸 Capturar foto
+            </button>
+            <label class="btn btn-ghost" style="padding:13px 16px;cursor:pointer;border-radius:12px;font-weight:700;font-size:13px;">
+              📁 Subir imagen(es)
+              <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+            </label>
+          </div>
+
+          <!-- Photo gallery -->
+          <div style="margin-top:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
+              Imágenes capturadas <span id="photoCountLabel" style="color:var(--cyan);"></span>
+            </div>
+            <div class="photo-gallery" id="photoGallery">
+              <label class="add-photo-btn">
+                <div class="plus">＋</div><div>Agregar foto</div>
+                <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+              </label>
+            </div>
+          </div>
+
+          <!-- Analyze button -->
+          <div style="margin-top:16px;">
+            <button class="btn-analyze" id="analyzeBtn" onclick="analyzeWithAI()" disabled>
+              🤖 Analizar todas las imágenes con AI
+            </button>
+            <div style="font-size:10px;color:var(--text-300);text-align:center;margin-top:6px;">
+              La AI extrae: PN, PO, Serial, Tracking, Carrier, Vendor, Peso y más
+            </div>
+          </div>
+
+          <!-- Confidence -->
+          <div id="confSection" style="display:none;margin-top:12px;background:white;border-radius:10px;border:1px solid var(--border);padding:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-500);">
+              <span>Confianza del análisis AI</span><span id="confPct">—</span>
+            </div>
+            <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:0%;background:#22c77a;"></div></div>
+            <div id="confFields" style="font-size:10px;color:var(--text-300);margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <!-- ══ RIGHT: Form panel ══ -->
+        <div>
+          <div class="form-panel">
+            <div class="form-panel-header">
+              <span style="font-size:20px;">📋</span>
+              <div>
+                <div class="form-panel-title" id="panelTitle">Información de Entrada</div>
+                <div style="color:rgba(255,255,255,.5);font-size:11px;" id="panelSub">Completa los datos del paquete</div>
+              </div>
+            </div>
+            <div class="form-panel-body">
+
+              <!-- SKU -->
+              <div class="sku-display">
+                <div>
+                  <div class="sku-lbl">SKU generado (mensual)</div>
+                  <div class="sku-val" id="skuDisplay">—</div>
+                </div>
+                <button class="btn btn-ghost btn-xs" onclick="refreshSKU()" title="Regenerar SKU">🔄</button>
+              </div>
+
+              <!-- Área -->
+              <div class="form-group" style="margin-bottom:14px;">
+                <label class="form-label">Área <span class="req">*</span></label>
+                <div class="area-chips">
+                  <div class="area-chip sel" onclick="selArea(this,'OPS')">OPS</div>
+                  <div class="area-chip" onclick="selArea(this,'RETURN')">RETURN</div>
+                  <div class="area-chip" onclick="selArea(this,'MRO')">MRO</div>
+                  <div class="area-chip" onclick="selArea(this,'ISS')">ISS</div>
+                  <div class="area-chip" onclick="selArea(this,'8106')">8106</div>
+                </div>
+              </div>
+
+              <!-- Part Number / PO -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                  <label class="form-label">Part Number (PN)</label>
+                  <input class="form-input" id="fPN" placeholder="P/N" oninput="this.value=this.value.toUpperCase()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">PO</label>
+                  <input class="form-input" id="fPO" placeholder="Purchase Order">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Serial Number</label>
+                  <input class="form-input" id="fSerial" placeholder="S/N">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Descripción</label>
+                  <input class="form-input" id="fDesc" placeholder="Descripción del artículo">
+                </div>
+              </div>
+
+              <!-- Piezas / Bultos / Tipo -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px;">
+                <div class="form-group">
+                  <label class="form-label">Piezas <span class="req">*</span></label>
+                  <input class="form-input" id="fPiezas" type="number" min="1" placeholder="0" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" title="# etiquetas a imprimir">Bultos <span class="req">*</span> 🏷️</label>
+                  <input class="form-input" id="fBultos" type="number" min="1" placeholder="0" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tipo de bulto</label>
+                  <select class="form-select" id="fTipo">
+                    <option value="">—</option>
+                    <option>Tarima</option><option>Java</option><option>Crate</option>
+                    <option>Caja</option><option>Tubo</option><option>Sobre</option><option>Bulto</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Tracking / Carrier -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+                <div class="form-group">
+                  <label class="form-label">Tracking Number</label>
+                  <input class="form-input" id="fTracking" placeholder="Tracking #" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Carrier</label>
+                  <select class="form-select" id="fCarrier" onchange="onChg()">
+                    <option value="">— Carrier —</option>
+                    <option>FedEx</option><option>UPS</option><option>DHL</option>
+                    <option>XPO</option><option>Otro</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Vendor / Peso -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+                <div class="form-group">
+                  <label class="form-label">Vendor / Proveedor</label>
+                  <input class="form-input" id="fVendor" placeholder="Proveedor" oninput="onChg()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Peso (lbs/kg)</label>
+                  <input class="form-input" id="fPeso" placeholder="Ej. 25.5 lbs" oninput="onChg()">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top:4px;">
+                <label class="form-label">Notas</label>
+                <input class="form-input" id="fNotas" placeholder="Observaciones">
+              </div>
+
+              <!-- Labels section (shown after AI) -->
+              <div id="labelsSection" style="display:none;margin-top:16px;">
+                <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">🏷️ Labels para imprimir</div>
+
+                <!-- Label 4x3 -->
+                <div class="label-preview-box">
+                  <div class="label-preview-title">
+                    <span>Label 4×3 — Principal (con QR + barcode)</span>
+                    <div style="display:flex;gap:6px;">
+                      <button class="btn btn-ghost btn-xs" onclick="printLabel43()">🖨️</button>
+                      <button class="btn btn-ghost btn-xs" onclick="printAllLabels()" title="Imprimir 1 por bulto">Todos (×<span id="bultosCount">1</span>)</button>
+                    </div>
+                  </div>
+                  <div id="label43Container"></div>
+                </div>
+
+                <!-- Label 3x2 -->
+                <div class="label-preview-box">
+                  <div class="label-preview-title">
+                    <span>Label 3×2 — Secundario</span>
+                    <button class="btn btn-ghost btn-xs" onclick="printLabel32()">🖨️</button>
+                  </div>
+                  <div id="label32Container"></div>
+                </div>
+
+                <!-- MARTECH Excel -->
+                <div id="martechSection" style="display:none;margin-bottom:8px;">
+                  <button onclick="exportMartech()"
+                    style="width:100%;padding:11px;border-radius:10px;border:1px solid rgba(34,199,122,.25);background:rgba(34,199,122,.08);color:#16a34a;font-weight:700;font-size:12px;cursor:pointer;">
+                    📊 Exportar a Excel MARTECH
+                  </button>
+                </div>
+              </div>
+
+              <!-- Save -->
+              <button class="btn-save" id="saveBtn" onclick="saveEntry()" disabled>
+                💾 Guardar Entrada en Inventario
+              </button>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI overlay -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-spin"></div>
+  <div class="ai-ol-text">🤖 Analizando imágenes...</div>
+  <div class="ai-ol-sub" id="aiSub">Procesando imagen 1 de 1</div>
+</div>
+
+<div class="bottom-nav" id="bottomNav"></div>
+<div class="toast" id="globalToast"></div>
+
+<script src="../js/core.js"></script>
+<script>
+// ── Globals ───────────────────────────────────────────────────────────────
+let USER, clienteData;
+let photos   = [];    // [{dataUrl}]
+let stream   = null;
+let curSKU   = null;
+let curArea  = 'OPS';
+let aiDone   = false;
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  USER = initPage('ai_entry', ['admin','operador']);
+  if (!USER) return;
+  // Guard: Martech users → redirect to their entry module
+  if (USER.rol !== 'admin' && USER.cliente_codigo === 'MARTECH') {
+    location.href = 'martech-entry.html'; return;
+  }
+  await loadCliente();
+  await refreshSKU();
+  startCamera();
+});
+
+async function loadCliente() {
+  if (!USER.cliente_id) {
+    document.getElementById('clienteBadge').textContent = 'Sin cliente asignado';
+    return;
+  }
+  const { data } = await db.schema('ideascan').from('clientes')
+    .select('*').eq('id', USER.cliente_id).single();
+  clienteData = data;
+  if (!data) return;
+  document.getElementById('clienteBadge').textContent = data.nombre;
+  document.getElementById('panelTitle').textContent   = `Entrada — ${data.nombre}`;
+  document.getElementById('panelSub').textContent     = `Cliente: ${data.nombre}  ·  Código SKU: ${data.codigo}`;
+  // MARTECH export button
+  const isMartech = (data.nombre||'').toUpperCase().includes('MARTECH')
+                 || (data.codigo||'').toUpperCase().startsWith('MAR');
+  if (isMartech) document.getElementById('martechSection').style.display = '';
+}
+
+async function refreshSKU() {
+  document.getElementById('skuDisplay').textContent = '⏳';
+  const codigo = clienteData?.codigo || 'IDX';
+  curSKU = await generateSKU(codigo);
+  document.getElementById('skuDisplay').textContent = curSKU;
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:960 } },
+      audio:false
+    });
+    const v = document.getElementById('camVideo');
+    v.srcObject = stream;
+    await v.play();
+    document.getElementById('camStatus').textContent  = '✅ Cámara lista — captura las etiquetas del paquete';
+    document.getElementById('captureBtn').disabled    = false;
+  } catch(e) {
+    document.getElementById('camStatus').textContent = '📁 Sin cámara — usa "Subir imagen" para cargar fotos';
+    document.getElementById('captureBtn').disabled   = true;
+  }
+}
+
+function capturePhoto() {
+  const v = document.getElementById('camVideo');
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth || 1280; c.height = v.videoHeight || 960;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const dataUrl = c.toDataURL('image/jpeg', 0.85);
+  addPhoto(dataUrl);
+}
+
+function uploadPhotos(input) {
+  [...input.files].forEach(file => {
+    const r = new FileReader();
+    r.onload = e => addPhoto(e.target.result);
+    r.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function addPhoto(dataUrl) {
+  photos.push({ dataUrl });
+  renderGallery();
+  setStep(1, true); setStep(2);
+  document.getElementById('analyzeBtn').disabled = false;
+  const n = photos.length;
+  document.getElementById('camStatus').textContent = `✅ Foto ${n} capturada — puedes capturar más`;
+}
+
+function removePhoto(i) {
+  photos.splice(i, 1);
+  renderGallery();
+  if (!photos.length) document.getElementById('analyzeBtn').disabled = true;
+}
+
+function renderGallery() {
+  const n = photos.length;
+  document.getElementById('photoCount').textContent = n;
+  document.getElementById('photoBadge').style.display    = n ? '' : 'none';
+  document.getElementById('photoCountLabel').textContent = n ? `(${n})` : '';
+
+  let html = photos.map((p, i) => `
+    <div class="photo-thumb">
+      <img src="${p.dataUrl}" alt="Foto ${i+1}">
+      <button class="del-ph" onclick="removePhoto(${i})">✕</button>
+      <div class="ph-num">${i+1}</div>
+    </div>`).join('');
+
+  html += `<label class="add-photo-btn">
+    <div class="plus">＋</div><div>Agregar</div>
+    <input type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+  </label>`;
+
+  document.getElementById('photoGallery').innerHTML = html;
+}
+
+// ── Area ──────────────────────────────────────────────────────────────────
+function selArea(el, val) {
+  document.querySelectorAll('.area-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  curArea = val;
+  if (aiDone) renderLabels();
+}
+
+function onChg() {
+  if (aiDone) {
+    renderLabels();
+    document.getElementById('bultosCount').textContent = document.getElementById('fBultos').value || 1;
+  }
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────────────
+async function analyzeWithAI() {
+  if (!photos.length) { showToast('Captura al menos una foto primero', 'warning'); return; }
+
+  document.getElementById('aiOverlay').classList.add('open');
+  document.getElementById('analyzeBtn').disabled = true;
+  setStep(2, true); setStep(3);
+
+  const prompt = `Eres un sistema de WMS logístico. Analiza CUIDADOSAMENTE esta imagen de un paquete, etiqueta de envío, factura o guía.
+
+Extrae TODA la información visible. Busca específicamente:
+- TRACKING NUMBER: cualquier código alfanumérico largo de 12-30 caracteres (ej. 794644792798, 1Z999AA10123456784)
+- CARRIER: FedEx, UPS, DHL, XPO, USPS, u otro carrier
+- PART NUMBER (PN, P/N, Part No, Item): código alfanumérico del artículo
+- PO (Purchase Order, Orden de Compra, P.O.#)
+- SERIAL NUMBER (S/N, Serial, SER)
+- DESCRIPCIÓN: nombre o descripción del artículo
+- CANTIDAD (QTY, Piezas, Units, Pieces, EA)
+- PESO TOTAL (Total Weight, GW, Gross Weight - busca en el panel del carrier)
+- VENDOR / SHIPPER / PROVEEDOR: nombre de empresa que envía
+- ORIGIN: país o ciudad de origen
+
+Responde SOLO con este JSON exacto (sin markdown, sin texto adicional):
+{
+  "tracking_number": "string o null",
+  "carrier": "FedEx|UPS|DHL|XPO|Otro|null",
+  "numero_parte": "string o null",
+  "po": "string o null",
+  "serial_number": "string o null",
+  "descripcion": "string o null",
+  "cantidad": "número o null",
+  "peso": "string con unidad o null",
+  "vendor": "string o null",
+  "origin": "string o null",
+  "confianza": número_entre_0_y_100,
+  "campos_detectados": ["lista", "de", "campos", "encontrados"]
+}`;
+
+  try {
+    const results = [];
+    for (let i = 0; i < photos.length; i++) {
+      document.getElementById('aiSub').textContent = `Analizando imagen ${i+1} de ${photos.length}...`;
+      const base64 = photos[i].dataUrl.split(',')[1];
+      const mime   = photos[i].dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+      try {
+        const raw = await callVision(base64, mime, prompt);
+        console.log(`[AI] Imagen ${i+1} raw response:`, raw);
+
+        // Check for EF-level errors
+        if (raw?.error) {
+          console.warn(`[AI] EF error img ${i+1}:`, raw.error, raw.message);
+          showToast('Error AI: ' + (raw.message || raw.error), 'error');
+          continue;
+        }
+
+        const text   = extractText(raw);
+        const parsed = parseJSON(text);
+        console.log(`[AI] Imagen ${i+1} parsed:`, parsed);
+        if (parsed && !parsed.error) results.push(parsed);
+        else if (parsed?.error) console.warn('[AI] Parse error:', parsed);
+      } catch(err) {
+        console.error(`[AI] Imagen ${i+1} exception:`, err);
+      }
+    }
+
+    if (!results.length) {
+      showToast('No se pudo analizar. Llena los campos manualmente.', 'warning');
+    } else {
+      const merged = mergeAll(results);
+      fillForm(merged);
+      showConf(merged.confianza || 65, merged.campos_detectados || []);
+      aiDone = true;
+      setStep(3, true); setStep(4);
+      renderLabels();
+      document.getElementById('labelsSection').style.display = '';
+      document.getElementById('bultosCount').textContent = document.getElementById('fBultos').value || 1;
+      document.getElementById('saveBtn').disabled = false;
+      showToast(`✅ AI detectó ${merged.campos_detectados?.length || 0} campos`, 'success');
+    }
+  } catch(e) {
+    showToast('Error AI: ' + e.message, 'error');
+  } finally {
+    document.getElementById('aiOverlay').classList.remove('open');
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function extractText(raw) {
+  // EF returns parsed JSON directly — check if it has our expected fields
+  if (raw && typeof raw === 'object' && !raw.error) {
+    if ('confianza' in raw || 'tracking_number' in raw || 'numero_parte' in raw || 'campos_detectados' in raw) {
+      return JSON.stringify(raw); // already parsed object, re-stringify for parseJSON
+    }
+  }
+  // Fallback: unwrap Anthropic wrapper or stringify
+  if (raw?.content?.[0]?.text) return raw.content[0].text;
+  if (raw?.text)                return raw.text;
+  if (typeof raw === 'string')  return raw;
+  return JSON.stringify(raw);
+}
+
+function parseJSON(text) {
+  try {
+    // Direct parse first (EF returns clean JSON object)
+    if (typeof text === 'string') {
+      const direct = JSON.parse(text);
+      if (direct && typeof direct === 'object' && !direct.error) return direct;
+    }
+  } catch {}
+  try {
+    const clean = (typeof text === 'string' ? text : JSON.stringify(text)).replace(/```json|```/g,'').trim();
+    const match = clean.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch { return null; }
+}
+
+function mergeAll(arr) {
+  const keys = ['tracking_number','carrier','numero_parte','po','serial_number','descripcion','cantidad','peso','vendor','origin'];
+  const merged = {};
+  keys.forEach(k => {
+    merged[k] = arr.map(r => r[k]).find(v => v && v !== 'null' && String(v).trim() !== '') ?? null;
+  });
+  merged.confianza = Math.max(...arr.map(r => r.confianza || 0));
+  const all = new Set();
+  arr.forEach(r => (r.campos_detectados || []).forEach(c => all.add(c)));
+  merged.campos_detectados = [...all];
+  return merged;
+}
+
+function fillForm(d) {
+  const map = { fPN: d.numero_parte, fPO: d.po, fSerial: d.serial_number, fDesc: d.descripcion, fTracking: d.tracking_number, fVendor: d.vendor, fPeso: d.peso };
+  Object.entries(map).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val) { el.value = val; el.classList.add('field-auto'); }
+  });
+  if (d.carrier) {
+    const sel = document.getElementById('fCarrier');
+    const match = ['FedEx','UPS','DHL','XPO'].find(o => (d.carrier||'').toUpperCase().includes(o.toUpperCase()));
+    sel.value = match || (d.carrier ? 'Otro' : '');
+    if (sel.value) sel.classList.add('field-auto');
+  }
+  if (d.cantidad) {
+    const n = parseInt(d.cantidad);
+    if (!isNaN(n)) { document.getElementById('fPiezas').value = n; document.getElementById('fPiezas').classList.add('field-auto'); }
+  }
+}
+
+function showConf(pct, campos) {
+  document.getElementById('confSection').style.display = '';
+  document.getElementById('confPct').textContent = pct + '%';
+  const fill = document.getElementById('confFill');
+  fill.style.width      = pct + '%';
+  fill.style.background = pct >= 75 ? '#22c77a' : pct >= 50 ? '#f59e0b' : '#ef4444';
+  document.getElementById('confFields').textContent = campos.length
+    ? 'Detectados: ' + campos.join(', ')
+    : 'No se detectaron campos con certeza';
+}
+
+// ── Steps ─────────────────────────────────────────────────────────────────
+function setStep(num, done = false) {
+  const el = document.getElementById('s'+num);
+  if (!el) return;
+  el.classList.remove('active','done');
+  el.classList.add(done ? 'done' : 'active');
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────
+function gd() {
+  return {
+    sku:     curSKU || '—',
+    area:    curArea,
+    pn:      document.getElementById('fPN').value,
+    po:      document.getElementById('fPO').value,
+    serial:  document.getElementById('fSerial').value,
+    desc:    document.getElementById('fDesc').value,
+    piezas:  document.getElementById('fPiezas').value,
+    bultos:  document.getElementById('fBultos').value,
+    tipo:    document.getElementById('fTipo').value,
+    track:   document.getElementById('fTracking').value,
+    carrier: document.getElementById('fCarrier').value,
+    vendor:  document.getElementById('fVendor').value,
+    peso:    document.getElementById('fPeso').value,
+    fecha:   (() => {
+      const n = new Date();
+      return String(n.getMonth()+1).padStart(2,'0') + '/' + String(n.getDate()).padStart(2,'0') + '/' + n.getFullYear();
+    })(),
+    cliente: clienteData?.nombre || 'CCA Group',
+  };
+}
+
+function renderLabels() {
+  const d = gd();
+  render43(d);
+  render32(d);
+  setStep(4, true); setStep(5);
+}
+
+function render43(d) {
+  // Footer will be filled per-label when printing (1/3, 2/3, 3/3)
+  // For preview we show 1/N
+  const totalBultos = parseInt(d.bultos) || 1;
+  const bultosStr = `1 / ${totalBultos}`;
+
+  document.getElementById('label43Container').innerHTML = `
+    <div class="label-4x3" id="lbl43">
+
+      <!-- Header: company name centered -->
+      <div class="l4-header">${d.cliente || 'CCA Group'}</div>
+
+      <!-- SKU big + QR top right -->
+      <div class="l4-top">
+        <div class="l4-sku-big">${d.sku}</div>
+        <div class="l4-qr"><canvas id="qr43"></canvas></div>
+      </div>
+
+      <!-- Barcode centered below SKU -->
+      <div class="l4-bc"><svg id="bc43"></svg></div>
+
+      <hr class="l4-divider">
+
+      <!-- Info rows: Vendor, Date, Tracking, Carrier -->
+      <div class="l4-info">
+        ${d.vendor ? `<div class="l4-row"><span class="l4-k">Vendor:</span><span class="l4-v">${d.vendor}</span></div>` : ''}
+        <div class="l4-row"><span class="l4-k">Date:</span><span class="l4-v">${d.fecha}</span></div>
+        ${d.track  ? `<div class="l4-row"><span class="l4-k">Tracking #:</span><span class="l4-v">${d.track}</span></div>` : ''}
+        ${d.carrier? `<div class="l4-row" style="margin-top:1px;"><span class="l4-k">Carrier:</span><span class="l4-v">${d.carrier}</span></div>` : ''}
+        ${d.pn     ? `<div class="l4-row"><span class="l4-k">P/N:</span><span class="l4-v">${d.pn}</span></div>` : ''}
+        ${d.po     ? `<div class="l4-row"><span class="l4-k">PO:</span><span class="l4-v">${d.po}</span></div>` : ''}
+        ${d.serial ? `<div class="l4-row"><span class="l4-k">S/N:</span><span class="l4-v">${d.serial}</span></div>` : ''}
+        ${d.desc   ? `<div class="l4-row"><span class="l4-k">Desc:</span><span class="l4-v">${d.desc}</span></div>` : ''}
+      </div>
+
+      <!-- Area section -->
+      <div class="l4-area-wrap">
+        <div class="l4-area-label">Area</div>
+        <div class="l4-area-val">${d.area}</div>
+      </div>
+
+      <!-- Footer: bulto X de N -->
+      <div class="l4-footer" id="l4footer">${bultosStr}</div>
+
+    </div>`;
+
+  // Barcode with SKU displayed below
+  try {
+    JsBarcode('#bc43', d.sku, {
+      format:'CODE128', width:1.6, height:48,
+      displayValue:true, fontSize:12, font:'monospace',
+      textMargin:4, margin:0,
+    });
+  } catch(e) { console.warn('Barcode:', e); }
+
+  // QR with all info
+  try {
+    const qrData = [d.sku, d.area, d.vendor, d.track, d.carrier, d.fecha, d.pn, d.po, d.serial]
+      .filter(Boolean).join('|');
+    QRCode.toCanvas(document.getElementById('qr43'), qrData, {
+      width:60, margin:1, color:{ dark:'#000000', light:'#ffffff' }
+    });
+  } catch(e) { console.warn('QR:', e); }
+}
+
+function render32(d) {
+  // Same layout as 4x3 but NO QR code. Always 1 per entry (no per-bulto numbering).
+  document.getElementById('label32Container').innerHTML = `
+    <div class="label-3x2" id="lbl32">
+
+      <!-- Header -->
+      <div class="l4-header">${d.cliente || 'CCA Group'}</div>
+
+      <!-- SKU big (no QR) -->
+      <div class="l4-top" style="justify-content:flex-start;">
+        <div class="l4-sku-big">${d.sku}</div>
+      </div>
+
+      <!-- Barcode -->
+      <div class="l4-bc"><svg id="bc32"></svg></div>
+
+      <hr class="l4-divider">
+
+      <!-- Info rows -->
+      <div class="l4-info">
+        ${d.vendor  ? `<div class="l4-row"><span class="l4-k">Vendor:</span><span class="l4-v">${d.vendor}</span></div>` : ''}
+        <div class="l4-row"><span class="l4-k">Date:</span><span class="l4-v">${d.fecha}</span></div>
+        ${d.track   ? `<div class="l4-row"><span class="l4-k">Tracking #:</span><span class="l4-v">${d.track}</span></div>` : ''}
+        ${d.carrier ? `<div class="l4-row"><span class="l4-k">Carrier:</span><span class="l4-v">${d.carrier}</span></div>` : ''}
+        ${d.pn      ? `<div class="l4-row"><span class="l4-k">P/N:</span><span class="l4-v">${d.pn}</span></div>` : ''}
+        ${d.po      ? `<div class="l4-row"><span class="l4-k">PO:</span><span class="l4-v">${d.po}</span></div>` : ''}
+      </div>
+
+      <!-- Area -->
+      <div class="l4-area-wrap">
+        <div class="l4-area-label">Area</div>
+        <div class="l4-area-val">${d.area}</div>
+      </div>
+
+      <!-- Footer: total bultos (no per-label number) -->
+      <div class="l4-footer">${d.bultos ? d.bultos + (d.tipo ? ' ' + d.tipo : '') + (parseInt(d.bultos)>1 ? 's' : '') : ''}</div>
+
+    </div>`;
+
+  try {
+    JsBarcode('#bc32', d.sku, {
+      format:'CODE128', width:1.6, height:48,
+      displayValue:true, fontSize:12, font:'monospace',
+      textMargin:4, margin:0,
+    });
+  } catch(e) { console.warn('bc32:', e); }
+}
+
+// ── Print ─────────────────────────────────────────────────────────────────
+const LABEL_CSS = `
+  /* Label 4x3 print styles */
+  .label-4x3{font-family:Arial,sans-serif;border:1.5px solid #ccc;background:white;border-radius:4px;overflow:hidden;page-break-inside:avoid;}
+  .l4-header{text-align:center;padding:5px 8px;font-size:11px;font-weight:700;color:#444;border-bottom:1px solid #ddd;background:#fafafa;}
+  .l4-top{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 4px;}
+  .l4-sku-big{font-family:monospace;font-size:28px;font-weight:900;color:#000;letter-spacing:1px;}
+  .l4-bc{text-align:center;padding:0 10px 4px;} .l4-bc svg{max-width:100%;height:48px;}
+  .l4-divider{border:none;border-top:1px solid #ddd;margin:0 10px;}
+  .l4-info{padding:6px 10px;display:flex;flex-direction:column;gap:4px;}
+  .l4-row{display:flex;align-items:baseline;}
+  .l4-k{font-size:11px;font-weight:700;color:#000;min-width:90px;}
+  .l4-v{font-size:11px;font-weight:400;color:#111;}
+  .l4-area-wrap{border-top:1px solid #ddd;border-bottom:1px solid #ddd;margin:4px 0;padding:4px 10px;text-align:center;}
+  .l4-area-label{font-size:10px;font-style:italic;color:#444;margin-bottom:2px;}
+  .l4-area-val{font-size:26px;font-weight:900;color:#000;letter-spacing:2px;}
+  .l4-footer{padding:4px 10px;font-size:10px;color:#666;}
+  /* Label 3x2 — same structure as 4x3, reuses all l4-* classes */
+  .label-3x2{font-family:Arial,sans-serif;border:1.5px solid #ccc;background:white;border-radius:4px;overflow:hidden;page-break-inside:avoid;}
+`;
+
+function doPrint(html, title='Label') {
+  const w = window.open('','_blank','width=620,height=800');
+  w.document.write(`<html><head><title>${title}</title>
+    <style>body{margin:6px;}${LABEL_CSS}@media print{@page{margin:3mm}}</style>
+    </head><body onload="window.print()">${html}</body></html>`);
+  w.document.close();
+}
+
+function printLabel43() {
+  const el = document.getElementById('lbl43');
+  if (!el) { showToast('Primero analiza con AI', 'warning'); return; }
+  doPrint(el.outerHTML, 'Label 4x3 — ' + curSKU);
+}
+
+function printLabel32() {
+  const el = document.getElementById('lbl32');
+  if (!el) { showToast('Primero analiza con AI', 'warning'); return; }
+  doPrint(el.outerHTML, 'Label 3x2 — ' + curSKU);
+}
+
+function printAllLabels() {
+  const d      = gd();
+  const bultos = parseInt(d.bultos) || 1;
+  let html     = '';
+
+  for (let i = 0; i < bultos; i++) {
+    const num = i + 1; // 1-based
+    const footerText = `${num} / ${bultos}`; // "1 / 3", "2 / 3", "3 / 3"
+
+    // Clone label 4x3 and update footer for this bulto
+    const el43 = document.getElementById('lbl43');
+    if (el43) {
+      // Deep clone and replace footer text
+      let h43 = el43.outerHTML;
+      // Replace the footer content (1 / N) with correct bulto number
+      h43 = h43.replace(/(<div class="l4-footer"[^>]*>)[^<]*/,
+                         `$1${footerText}`);
+      html += `<div style="page-break-after:${i < bultos-1 ? 'always' : 'auto'}">${h43}</div>`;
+    }
+  }
+
+  // 3x2 — ALWAYS only 1 per entry, appended after all 4x3 labels
+  const el32 = document.getElementById('lbl32');
+  if (el32) {
+    html += `<div style="page-break-before:always;">${el32.outerHTML}</div>`;
+  }
+
+  doPrint(html, `Labels × ${bultos} — ${curSKU}`);
+}
+
+// ── Martech Excel ─────────────────────────────────────────────────────────
+function exportMartech() {
+  if (!window.XLSX) { showToast('XLSX no cargado', 'error'); return; }
+  const d = gd();
+  const row = {
+    'SKU': d.sku, 'Fecha': d.fecha, 'Área': d.area,
+    'Part Number': d.pn, 'PO': d.po, 'Serial Number': d.serial,
+    'Descripción': d.desc, 'Piezas': d.piezas, 'Bultos': d.bultos,
+    'Tipo Bulto': d.tipo, 'Tracking Number': d.track,
+    'Carrier': d.carrier, 'Vendor': d.vendor, 'Peso': d.peso,
+    'Cliente': d.cliente, 'Operador': USER.nombre || USER.username,
+  };
+  const ws = XLSX.utils.json_to_sheet([row]);
+  ws['!cols'] = Object.keys(row).map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Entrada');
+  XLSX.writeFile(wb, `MARTECH_${d.sku}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('✅ Excel MARTECH descargado', 'success');
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────
+async function saveEntry() {
+  const d = gd();
+  if (!d.piezas || d.piezas < 1) { showToast('Ingresa cantidad de piezas', 'warning'); return; }
+  if (!d.bultos || d.bultos < 1) { showToast('Ingresa cantidad de bultos', 'warning'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = '⏳ Guardando...';
+
+  try {
+    const { error } = await db.schema('ideascan').from('inventario').insert({
+      sku:            curSKU,
+      cliente_id:     USER.cliente_id  || null,
+      almacen_id:     USER.almacen_id  || null,
+      numero_parte:   d.pn    || null,
+      po:             d.po    || null,
+      serial_number:  d.serial|| null,
+      descripcion:    d.desc  || null,
+      cantidad:       parseInt(d.piezas) || 0,
+      bultos:         parseInt(d.bultos) || 1,
+      tipo_bulto:     d.tipo  || null,
+      tracking_number:d.track || null,
+      carrier:        d.carrier||null,
+      vendor:         d.vendor||null,
+      peso:           d.peso  || null,
+      area:           curArea,
+      estado:         'activo',
+      operador_id:    USER.id,
+      fecha_entrada:  new Date().toISOString(),
+    });
+    if (error) throw error;
+
+    // Movement record
+    db.schema('ideascan').from('movimientos').insert({
+      tipo:'entrada', sku:curSKU,
+      cliente_id:USER.cliente_id, almacen_id:USER.almacen_id,
+      cantidad:parseInt(d.piezas)||0, operador_id:USER.id,
+      referencia:d.track||d.po||null,
+      notas:`AI Entry · ${d.carrier||''} · ${d.vendor||''}`,
+    }).catch(()=>{});
+
+    setStep(5, true);
+    showToast(`✅ Entrada guardada — SKU: ${curSKU}`, 'success', 5000);
+    btn.textContent = '✅ Guardado';
+
+    setTimeout(() => {
+      if (confirm('¿Registrar otra entrada?')) resetAll();
+    }, 3500);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '💾 Guardar Entrada en Inventario';
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────
+async function resetAll() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  photos = []; aiDone = false; curSKU = null;
+
+  ['fPN','fPO','fSerial','fDesc','fPiezas','fBultos','fTracking','fVendor','fPeso','fNotas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value=''; el.classList.remove('field-auto'); }
+  });
+  ['fCarrier','fTipo'].forEach(id => {
+    const el=document.getElementById(id); if(el){el.value='';el.classList.remove('field-auto');}
+  });
+
+  document.querySelectorAll('.area-chip').forEach(c=>c.classList.remove('sel'));
+  document.querySelector('.area-chip')?.classList.add('sel');
+  curArea = 'OPS';
+
+  renderGallery();
+  document.getElementById('labelsSection').style.display  = 'none';
+  document.getElementById('confSection').style.display    = 'none';
+  document.getElementById('saveBtn').disabled             = true;
+  document.getElementById('analyzeBtn').disabled          = true;
+
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('s'+i);
+    el.classList.remove('active','done');
+    if(i===1) el.classList.add('active');
+  }
+
+  await refreshSKU();
+  startCamera();
+  showToast('🔄 Lista para nueva entrada', 'info');
+}
+</script>
+</body>
+</html>
