@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Configuración</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>⚙️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+.config-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;overflow-x:auto;}
+.config-tab{padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-500);white-space:nowrap;margin-bottom:-2px;transition:all .18s;}
+.config-tab:hover{color:var(--navy);}
+.config-tab.active{color:var(--navy);border-bottom-color:var(--cyan);font-weight:700;}
+
+.entity-card{background:white;border-radius:12px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);}
+.entity-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.entity-info{flex:1;min-width:0;}
+.entity-name{font-size:14px;font-weight:700;color:var(--navy);}
+.entity-meta{font-size:11px;color:var(--text-300);margin-top:2px;}
+.entity-actions{display:flex;gap:6px;flex-shrink:0;}
+
+.field-checks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+@media(max-width:600px){.field-checks{grid-template-columns:repeat(2,1fr);}}
+.field-check{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .18s;user-select:none;}
+.field-check:hover{border-color:var(--cyan);}
+.field-check.checked{border-color:var(--navy);background:rgba(13,43,122,.05);}
+.field-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--navy);}
+.field-check-label{font-size:12px;font-weight:600;color:var(--text-700);flex:1;}
+
+.color-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.color-opt{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .18s;}
+.color-opt.selected{border-color:white;box-shadow:0 0 0 2px var(--navy);transform:scale(1.15);}
+
+.sku-preview-box{background:rgba(0,194,255,.06);border:1px solid rgba(0,194,255,.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+    <div class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">Configuración <span>WMS</span></div>
+    </div>
+
+    <div class="page-body">
+      <div class="config-tabs">
+        <div class="config-tab active" onclick="switchTab('clientes',this)">🏢 Clientes</div>
+        <div class="config-tab" onclick="switchTab('almacenes',this)">🏭 Almacenes</div>
+        <div class="config-tab" onclick="switchTab('usuarios',this)">👥 Usuarios</div>
+      </div>
+      <div id="tabContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Cliente ══ -->
+<div class="modal-overlay" id="clientModal" onclick="if(event.target===this)closeClientModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-icon" id="cmIcon" style="background:rgba(13,43,122,.08)">🏢</div>
+      <div>
+        <div class="modal-title" id="cmTitle">Nuevo Cliente</div>
+        <div class="modal-sub">Configura los campos de captura AI para este cliente</div>
+      </div>
+      <button class="modal-close" onclick="closeClientModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="cmNombre" placeholder="Ej. Nordson Medical">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Código SKU <span class="req">*</span></label>
+          <input class="form-input mono" id="cmCodigo" placeholder="Ej. SAF" maxlength="6"
+            oninput="this.value=this.value.toUpperCase();updateSkuPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contacto</label>
+          <input class="form-input" id="cmContacto" placeholder="Nombre de contacto">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="cmEmail" type="email" placeholder="email@empresa.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="cmTel" placeholder="+52 (664) 000-0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">RFC</label>
+          <input class="form-input mono" id="cmRfc" placeholder="RFC">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Color del cliente</label>
+          <div class="color-opts" id="colorOpts">
+            <div class="color-opt selected" data-color="#2d6ef5" style="background:#2d6ef5" onclick="selectColor('#2d6ef5',this)"></div>
+            <div class="color-opt" data-color="#0d2b7a" style="background:#0d2b7a" onclick="selectColor('#0d2b7a',this)"></div>
+            <div class="color-opt" data-color="#00c2ff" style="background:#00c2ff" onclick="selectColor('#00c2ff',this)"></div>
+            <div class="color-opt" data-color="#22c77a" style="background:#22c77a" onclick="selectColor('#22c77a',this)"></div>
+            <div class="color-opt" data-color="#ef4444" style="background:#ef4444" onclick="selectColor('#ef4444',this)"></div>
+            <div class="color-opt" data-color="#f59e0b" style="background:#f59e0b" onclick="selectColor('#f59e0b',this)"></div>
+            <div class="color-opt" data-color="#8b5cf6" style="background:#8b5cf6" onclick="selectColor('#8b5cf6',this)"></div>
+            <div class="color-opt" data-color="#ec4899" style="background:#ec4899" onclick="selectColor('#ec4899',this)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SKU Preview -->
+      <div class="sku-preview-box">
+        <div style="font-size:10px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Vista previa de SKU generado</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:900;color:var(--navy);" id="skuPreview">—</div>
+        <div style="font-size:10px;color:var(--text-300);margin-top:3px;">Formato: CÓDIGO + AAMMDD + ### · La secuencia reinicia cada mes</div>
+      </div>
+
+      <!-- AI Fields -->
+      <div style="background:rgba(13,43,122,.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:12px;font-weight:800;color:var(--navy);">🤖 Campos de Captura AI</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-xs" onclick="checkAll(true)">Seleccionar todos</button>
+            <button class="btn btn-ghost btn-xs" onclick="checkAll(false)">Limpiar</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-300);margin-bottom:10px;">Selecciona los campos que la AI debe capturar automáticamente para este cliente al escanear una imagen</div>
+        <div class="field-checks" id="fieldChecks"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notas internas</label>
+        <input class="form-input" id="cmNotas" placeholder="Observaciones sobre el cliente">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeClientModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="cmSaveBtn" onclick="saveClient()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Almacén ══ -->
+<div class="modal-overlay" id="warehouseModal" onclick="if(event.target===this)closeWarehouseModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-icon" id="wmIcon" style="background:rgba(13,43,122,.08)">🏭</div>
+      <div>
+        <div class="modal-title" id="wmTitle">Nuevo Almacén</div>
+        <div class="modal-sub">Registra un almacén en el sistema</div>
+      </div>
+      <button class="modal-close" onclick="closeWarehouseModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="wmNombre" placeholder="Ej. Almacén TJ Norte">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Código <span class="req">*</span></label>
+          <input class="form-input mono" id="wmCodigo" placeholder="Ej. TJN01" maxlength="8"
+            oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Dirección</label>
+          <input class="form-input" id="wmDir" placeholder="Calle, número, colonia, ciudad">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="wmTel" placeholder="+52 ...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Encargado</label>
+          <input class="form-input" id="wmEnc" placeholder="Nombre del encargado">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Superficie (m²)</label>
+          <input class="form-input" id="wmSup" type="number" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Capacidad (SKUs)</label>
+          <input class="form-input" id="wmCap" type="number" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeWarehouseModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="wmSaveBtn" onclick="saveWarehouse()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Usuario ══ -->
+<div class="modal-overlay" id="userModal" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-icon" id="umIcon" style="background:rgba(13,43,122,.08)">👤</div>
+      <div>
+        <div class="modal-title" id="umTitle">Nuevo Usuario</div>
+        <div class="modal-sub">El sistema asigna las credenciales automáticamente</div>
+      </div>
+      <button class="modal-close" onclick="closeUserModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="umNombre" placeholder="Nombre(s)" oninput="updateUsername()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido</label>
+          <input class="form-input" id="umApellido" placeholder="Apellidos" oninput="updateUsername()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre de usuario (generado)</label>
+          <input class="form-input mono" id="umUsername" placeholder="Se genera automáticamente">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="umEmail" type="email" placeholder="usuario@empresa.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña temporal <span class="req">*</span></label>
+          <input class="form-input" id="umPassword" type="text" placeholder="Contraseña inicial">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol <span class="req">*</span></label>
+          <select class="form-select" id="umRol" onchange="toggleRolFields()">
+            <option value="">— Seleccionar rol —</option>
+            <option value="admin">👑 Administrador</option>
+            <option value="supervisor">🔷 Supervisor de Almacén</option>
+            <option value="cliente">🏢 Cliente</option>
+            <option value="operador">⚙️ Operador</option>
+          </select>
+        </div>
+        <div class="form-group" id="clienteField">
+          <label class="form-label">Cliente asignado</label>
+          <select class="form-select" id="umCliente">
+            <option value="">— Sin cliente —</option>
+          </select>
+        </div>
+        <div class="form-group" id="almacenField">
+          <label class="form-label">Almacén asignado</label>
+          <select class="form-select" id="umAlmacen">
+            <option value="">— Sin almacén —</option>
+          </select>
+        </div>
+      </div>
+      <!-- Role description -->
+      <div id="rolDesc" style="display:none;background:rgba(0,194,255,.06);border:1px solid rgba(0,194,255,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--text-700);margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeUserModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="umSaveBtn" onclick="saveUser()">Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="modal-overlay" id="deleteModal" onclick="if(event.target===this)closeDelete()">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-icon" style="background:rgba(239,68,68,.1);">⚠️</div>
+      <div><div class="modal-title" id="delTitle">¿Eliminar?</div><div class="modal-sub" id="delSub"></div></div>
+      <button class="modal-close" onclick="closeDelete()">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px;color:var(--text-700);">Esta acción no puede deshacerse. El registro será desactivado del sistema.</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeDelete()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="delConfirmBtn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="globalToast"></div>
+<script src="../js/core.js"></script>
+<script>
+// ── Globals ───────────────────────────────────────────────────────────────
+let USER;
+let currentTab = 'clientes';
+let editingId  = null;
+let selectedColor = '#2d6ef5';
+let clientsList = [];
+let almacenesList = [];
+
+// All capturable fields for AI
+const ALL_AI_FIELDS = [
+  { key:'numero_parte',    label:'N° de Parte' },
+  { key:'descripcion',     label:'Descripción' },
+  { key:'po',              label:'PO' },
+  { key:'cantidad',        label:'Cantidad/Piezas' },
+  { key:'bultos',          label:'Bultos' },
+  { key:'peso',            label:'Peso' },
+  { key:'part_model',      label:'Part Model' },
+  { key:'serial_number',   label:'Serial Number' },
+  { key:'tracking_number', label:'Tracking Number' },
+  { key:'vendor',          label:'Vendor' },
+  { key:'origin',          label:'Origin' },
+  { key:'ubicacion',       label:'Ubicación/Zona' },
+];
+
+const DEFAULT_FIELDS = ['numero_parte','descripcion','cantidad','bultos','tracking_number','vendor'];
+
+const ROL_DESC = {
+  admin:      'Acceso completo: inventario, SKUs, clientes, almacenes, usuarios, mapas y configuración.',
+  supervisor: 'Ver, imprimir, descargar y subir reportes/imágenes/Excel para su almacén o cliente asignado. Puede modificar el mapa de su almacén. Sin acceso a configuración.',
+  cliente:    'Solo puede ver, imprimir y descargar reportes para los almacenes asignados. Sin acceso a configuración ni Entrada AI.',
+  operador:   'Puede modificar inventario y SKUs de su cliente/almacén asignado. Puede usar Entrada AI y ver reportes de su asignación.',
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  USER = initPage('config', ['admin']);
+  if (!USER) return;
+  await loadMeta();
+  switchTab('clientes', document.querySelector('.config-tab.active'));
+});
+
+async function loadMeta() {
+  const [cls, alms] = await Promise.all([
+    safeQuery(() => Q.from('clientes').select('*').order('nombre')),
+    safeQuery(() => Q.from('almacenes').select('*').order('nombre')),
+  ]);
+  clientsList   = cls   || [];
+  almacenesList = alms  || [];
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (tab === 'clientes')  renderClientes();
+  if (tab === 'almacenes') renderAlmacenes();
+  if (tab === 'usuarios')  renderUsuarios();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  CLIENTES
+// ══════════════════════════════════════════════════════════════════════════
+function renderClientes() {
+  document.getElementById('tabContent').innerHTML = `
+    <div class="flex-between mb-16">
+      <div class="section-title">🏢 Clientes Registrados</div>
+      <button class="btn btn-primary btn-sm" onclick="openClientModal()">＋ Nuevo Cliente</button>
+    </div>
+    <div id="clientList">
+      ${clientsList.length ? clientsList.map(c => clientCardHTML(c)).join('') :
+        `<div class="empty-state"><div class="empty-icon">🏢</div><div class="empty-text">Sin clientes registrados</div></div>`}
+    </div>`;
+}
+
+function clientCardHTML(c) {
+  const campos = Array.isArray(c.campos_captura) ? c.campos_captura : JSON.parse(c.campos_captura||'[]');
+  return `<div class="entity-card">
+    <div class="entity-icon" style="background:${c.color||'#2d6ef5'}22;">
+      <span style="font-size:20px;">${c.emoji||'🏢'}</span>
+    </div>
+    <div style="width:10px;height:40px;border-radius:4px;background:${c.color||'#2d6ef5'};flex-shrink:0;"></div>
+    <div class="entity-info">
+      <div class="entity-name">${c.nombre} <span class="mono" style="font-size:11px;color:var(--cyan);margin-left:4px;">[${c.codigo}]</span></div>
+      <div class="entity-meta">${c.contacto||''} ${c.email?'· '+c.email:''}</div>
+      <div class="entity-meta" style="margin-top:3px;">
+        <span style="color:var(--text-300);">Campos AI:</span>
+        ${campos.slice(0,5).map(k => {
+          const f = ALL_AI_FIELDS.find(f=>f.key===k);
+          return `<span class="badge badge-navy" style="font-size:9px;margin-right:3px;">${f?.label||k}</span>`;
+        }).join('')}
+        ${campos.length > 5 ? `<span class="badge badge-info" style="font-size:9px;">+${campos.length-5}</span>` : ''}
+      </div>
+    </div>
+    <div class="entity-actions">
+      <button class="btn btn-ghost btn-xs" onclick="openClientModal('${c.id}')">✏️ Editar</button>
+      <button class="btn btn-xs" style="background:rgba(239,68,68,.08);color:var(--danger);border:1px solid rgba(239,68,68,.2);"
+        onclick="confirmDelete('cliente','${c.id}','${c.nombre}')">🗑</button>
+    </div>
+  </div>`;
+}
+
+function openClientModal(id = null) {
+  editingId = id;
+  selectedColor = '#2d6ef5';
+
+  // Build AI field checkboxes
+  const defaultChecked = DEFAULT_FIELDS;
+  document.getElementById('fieldChecks').innerHTML = ALL_AI_FIELDS.map(f => `
+    <label class="field-check" id="fc_${f.key}" onclick="toggleField(this,'${f.key}')">
+      <input type="checkbox" id="chk_${f.key}" ${defaultChecked.includes(f.key)?'checked':''}>
+      <span class="field-check-label">${f.label}</span>
+    </label>`).join('');
+  // Apply checked class
+  ALL_AI_FIELDS.forEach(f => {
+    if (defaultChecked.includes(f.key)) document.getElementById('fc_'+f.key)?.classList.add('checked');
+  });
+
+  if (id) {
+    const c = clientsList.find(c => c.id === id);
+    if (!c) return;
+    document.getElementById('cmTitle').textContent    = `Editar: ${c.nombre}`;
+    document.getElementById('cmNombre').value         = c.nombre;
+    document.getElementById('cmCodigo').value         = c.codigo;
+    document.getElementById('cmContacto').value       = c.contacto || '';
+    document.getElementById('cmEmail').value          = c.email    || '';
+    document.getElementById('cmTel').value            = c.telefono || '';
+    document.getElementById('cmRfc').value            = c.rfc      || '';
+    document.getElementById('cmNotas').value          = c.notas    || '';
+
+    selectedColor = c.color || '#2d6ef5';
+    document.querySelectorAll('.color-opt').forEach(el => {
+      el.classList.toggle('selected', el.dataset.color === selectedColor);
+    });
+
+    // Set field checkboxes from saved config
+    const campos = Array.isArray(c.campos_captura) ? c.campos_captura : (JSON.parse(c.campos_captura||'[]'));
+    ALL_AI_FIELDS.forEach(f => {
+      const chk = document.getElementById('chk_'+f.key);
+      const fc  = document.getElementById('fc_'+f.key);
+      if (chk) chk.checked = campos.includes(f.key);
+      if (fc)  fc.classList.toggle('checked', campos.includes(f.key));
+    });
+
+    document.getElementById('cmSaveBtn').textContent = 'Actualizar';
+  } else {
+    document.getElementById('cmTitle').textContent = 'Nuevo Cliente';
+    document.getElementById('cmNombre').value  = '';
+    document.getElementById('cmCodigo').value  = '';
+    document.getElementById('cmContacto').value= '';
+    document.getElementById('cmEmail').value   = '';
+    document.getElementById('cmTel').value     = '';
+    document.getElementById('cmRfc').value     = '';
+    document.getElementById('cmNotas').value   = '';
+    document.getElementById('cmSaveBtn').textContent = 'Guardar';
+  }
+  updateSkuPreview();
+  document.getElementById('clientModal').classList.add('open');
+}
+
+function closeClientModal() { document.getElementById('clientModal').classList.remove('open'); }
+
+function toggleField(el, key) {
+  const chk = el.querySelector('input[type=checkbox]');
+  chk.checked = !chk.checked;
+  el.classList.toggle('checked', chk.checked);
+}
+
+function checkAll(val) {
+  ALL_AI_FIELDS.forEach(f => {
+    const chk = document.getElementById('chk_'+f.key);
+    const fc  = document.getElementById('fc_'+f.key);
+    if (chk) chk.checked = val;
+    if (fc)  fc.classList.toggle('checked', val);
+  });
+}
+
+function selectColor(color, el) {
+  selectedColor = color;
+  document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function updateSkuPreview() {
+  const cod = document.getElementById('cmCodigo')?.value || '???';
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  document.getElementById('skuPreview').textContent = `${cod}${yy}${mm}${dd}001`;
+}
+
+async function saveClient() {
+  const nombre = document.getElementById('cmNombre').value.trim();
+  const codigo = document.getElementById('cmCodigo').value.trim().toUpperCase();
+  if (!nombre || !codigo) { showToast('Nombre y código son obligatorios', 'warning'); return; }
+
+  const campos = ALL_AI_FIELDS.map(f => f.key).filter(k => document.getElementById('chk_'+k)?.checked);
+
+  const payload = {
+    nombre, codigo,
+    color:         selectedColor,
+    contacto:      document.getElementById('cmContacto').value.trim() || null,
+    email:         document.getElementById('cmEmail').value.trim() || null,
+    telefono:      document.getElementById('cmTel').value.trim() || null,
+    rfc:           document.getElementById('cmRfc').value.trim() || null,
+    notas:         document.getElementById('cmNotas').value.trim() || null,
+    campos_captura: campos,
+    activo:        true,
+  };
+
+  const btn = document.getElementById('cmSaveBtn');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    if (editingId) {
+      const { error } = await Q.from('clientes').update(payload).eq('id', editingId);
+      if (error) throw error;
+      showToast('✅ Cliente actualizado', 'success');
+    } else {
+      const { error } = await Q.from('clientes').insert(payload);
+      if (error) throw error;
+      showToast('✅ Cliente creado', 'success');
+    }
+    closeClientModal();
+    await loadMeta();
+    renderClientes();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Actualizar' : 'Guardar';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ALMACENES
+// ══════════════════════════════════════════════════════════════════════════
+function renderAlmacenes() {
+  document.getElementById('tabContent').innerHTML = `
+    <div class="flex-between mb-16">
+      <div class="section-title">🏭 Almacenes Registrados</div>
+      <button class="btn btn-primary btn-sm" onclick="openWarehouseModal()">＋ Nuevo Almacén</button>
+    </div>
+    <div id="warehouseList">
+      ${almacenesList.length ? almacenesList.map(a => warehouseCardHTML(a)).join('') :
+        `<div class="empty-state"><div class="empty-icon">🏭</div><div class="empty-text">Sin almacenes registrados</div></div>`}
+    </div>`;
+}
+
+function warehouseCardHTML(a) {
+  return `<div class="entity-card">
+    <div class="entity-icon" style="background:rgba(13,43,122,.08)">🏭</div>
+    <div class="entity-info">
+      <div class="entity-name">${a.nombre} <span class="mono" style="font-size:11px;color:var(--cyan);margin-left:4px;">[${a.codigo}]</span></div>
+      <div class="entity-meta">${a.direccion||'Sin dirección'}</div>
+      <div class="entity-meta">${a.encargado?'👤 '+a.encargado+' · ':''} ${a.superficie_m2?'📐 '+a.superficie_m2+' m² · ':''}${a.capacidad?'📦 Cap. '+a.capacidad:''}</div>
+    </div>
+    <div class="entity-actions">
+      <button class="btn btn-ghost btn-xs" onclick="openWarehouseModal('${a.id}')">✏️ Editar</button>
+      <button class="btn btn-xs" style="background:rgba(239,68,68,.08);color:var(--danger);border:1px solid rgba(239,68,68,.2);"
+        onclick="confirmDelete('almacen','${a.id}','${a.nombre}')">🗑</button>
+    </div>
+  </div>`;
+}
+
+function openWarehouseModal(id = null) {
+  editingId = id;
+  if (id) {
+    const a = almacenesList.find(a => a.id === id);
+    if (!a) return;
+    document.getElementById('wmTitle').textContent = `Editar: ${a.nombre}`;
+    document.getElementById('wmNombre').value = a.nombre;
+    document.getElementById('wmCodigo').value = a.codigo;
+    document.getElementById('wmDir').value    = a.direccion   || '';
+    document.getElementById('wmTel').value    = a.telefono    || '';
+    document.getElementById('wmEnc').value    = a.encargado   || '';
+    document.getElementById('wmSup').value    = a.superficie_m2 || '';
+    document.getElementById('wmCap').value    = a.capacidad   || '';
+    document.getElementById('wmSaveBtn').textContent = 'Actualizar';
+  } else {
+    document.getElementById('wmTitle').textContent = 'Nuevo Almacén';
+    ['wmNombre','wmCodigo','wmDir','wmTel','wmEnc','wmSup','wmCap'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('wmSaveBtn').textContent = 'Guardar';
+  }
+  document.getElementById('warehouseModal').classList.add('open');
+}
+
+function closeWarehouseModal() { document.getElementById('warehouseModal').classList.remove('open'); }
+
+async function saveWarehouse() {
+  const nombre = document.getElementById('wmNombre').value.trim();
+  const codigo = document.getElementById('wmCodigo').value.trim().toUpperCase();
+  if (!nombre || !codigo) { showToast('Nombre y código son obligatorios', 'warning'); return; }
+
+  const payload = {
+    nombre, codigo,
+    direccion:    document.getElementById('wmDir').value.trim() || null,
+    telefono:     document.getElementById('wmTel').value.trim() || null,
+    encargado:    document.getElementById('wmEnc').value.trim() || null,
+    superficie_m2: parseInt(document.getElementById('wmSup').value) || 0,
+    capacidad:    parseInt(document.getElementById('wmCap').value) || 0,
+    activo: true,
+  };
+
+  const btn = document.getElementById('wmSaveBtn');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    if (editingId) {
+      const { error } = await Q.from('almacenes').update(payload).eq('id', editingId);
+      if (error) throw error;
+      showToast('✅ Almacén actualizado', 'success');
+    } else {
+      const { error } = await Q.from('almacenes').insert(payload);
+      if (error) throw error;
+      showToast('✅ Almacén creado', 'success');
+    }
+    closeWarehouseModal();
+    await loadMeta();
+    renderAlmacenes();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Actualizar' : 'Guardar';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  USUARIOS
+// ══════════════════════════════════════════════════════════════════════════
+async function renderUsuarios() {
+  document.getElementById('tabContent').innerHTML = `
+    <div class="flex-between mb-16">
+      <div class="section-title">👥 Usuarios del Sistema</div>
+      <button class="btn btn-primary btn-sm" onclick="openUserModal()">＋ Nuevo Usuario</button>
+    </div>
+    <div id="userList"><div style="text-align:center;padding:20px;color:var(--text-300);">⏳ Cargando...</div></div>`;
+
+  const data = await safeQuery(() => Q.from('usuarios').select('*').eq('estado','active').order('nombre'));
+  if (!data) return;
+
+  const ROLE_LABEL = { admin:'👑 Admin', supervisor:'🔷 Supervisor', cliente:'🏢 Cliente', operador:'⚙️ Operador' };
+  const ROLE_COLOR = { admin:'#0d2b7a', supervisor:'#2d6ef5', cliente:'#00c2ff', operador:'#22c77a' };
+
+  document.getElementById('userList').innerHTML = data.length
+    ? data.map(u => `<div class="entity-card">
+        <div class="entity-icon" style="background:${ROLE_COLOR[u.rol]||'#666'}22;">
+          <div style="width:36px;height:36px;border-radius:9px;background:${u.color||ROLE_COLOR[u.rol]||'#666'};display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:800;">
+            ${(u.nombre||'U').slice(0,1).toUpperCase()}
+          </div>
+        </div>
+        <div class="entity-info">
+          <div class="entity-name">${u.nombre_display||u.nombre||u.username}
+            <span class="badge" style="font-size:9px;background:${ROLE_COLOR[u.rol]||'#666'}22;color:${ROLE_COLOR[u.rol]||'#666'};margin-left:6px;">${ROLE_LABEL[u.rol]||u.rol}</span>
+          </div>
+          <div class="entity-meta mono">@${u.username||'—'}</div>
+          <div class="entity-meta">${u.email||''} ${u.ultimo_acceso?'· Último acceso: '+fmtDate(u.ultimo_acceso):''}</div>
+        </div>
+        <div class="entity-actions">
+          <button class="btn btn-ghost btn-xs" onclick="openUserModal('${u.id}')">✏️</button>
+          <button class="btn btn-xs" style="background:rgba(239,68,68,.08);color:var(--danger);border:1px solid rgba(239,68,68,.2);"
+            onclick="confirmDelete('usuario','${u.id}','${u.username||u.nombre}')">🗑</button>
+        </div>
+      </div>`).join('')
+    : `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Sin usuarios registrados</div></div>`;
+}
+
+function openUserModal(id = null) {
+  editingId = id;
+
+  // Populate dropdowns
+  document.getElementById('umCliente').innerHTML = '<option value="">— Sin cliente —</option>' +
+    clientsList.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+  document.getElementById('umAlmacen').innerHTML = '<option value="">— Sin almacén —</option>' +
+    almacenesList.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+
+  if (id) {
+    // Edit mode: load user async
+    Q.from('usuarios').select('*').eq('id', id).single().then(({ data: u }) => {
+      if (!u) return;
+      document.getElementById('umTitle').textContent    = `Editar: ${u.nombre||u.username}`;
+      document.getElementById('umNombre').value         = u.nombre    || '';
+      document.getElementById('umApellido').value       = u.apellido  || '';
+      document.getElementById('umUsername').value       = u.username  || '';
+      document.getElementById('umEmail').value          = u.email     || '';
+      document.getElementById('umPassword').value       = '';
+      document.getElementById('umRol').value            = u.rol       || '';
+      document.getElementById('umCliente').value        = u.cliente_id || '';
+      document.getElementById('umAlmacen').value        = u.almacen_id || '';
+      document.getElementById('umSaveBtn').textContent  = 'Actualizar';
+      toggleRolFields();
+    });
+  } else {
+    document.getElementById('umTitle').textContent = 'Nuevo Usuario';
+    ['umNombre','umApellido','umUsername','umEmail','umPassword'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('umRol').value = '';
+    document.getElementById('umCliente').value = '';
+    document.getElementById('umAlmacen').value = '';
+    document.getElementById('umSaveBtn').textContent = 'Crear Usuario';
+    document.getElementById('rolDesc').style.display = 'none';
+    toggleRolFields();
+  }
+
+  document.getElementById('userModal').classList.add('open');
+}
+
+function closeUserModal() { document.getElementById('userModal').classList.remove('open'); }
+
+function updateUsername() {
+  const nombre   = document.getElementById('umNombre').value.trim().toLowerCase().replace(/\s+/g,'');
+  const apellido = document.getElementById('umApellido').value.trim().toLowerCase().split(' ')[0] || '';
+  if (!nombre) return;
+  document.getElementById('umUsername').value = `${nombre}${apellido ? '.'+apellido : ''}`.slice(0, 20);
+}
+
+function toggleRolFields() {
+  const rol = document.getElementById('umRol').value;
+  const needsClient  = ['supervisor','cliente','operador'].includes(rol);
+  const needsAlmacen = ['supervisor','operador'].includes(rol);
+  document.getElementById('clienteField').style.display  = needsClient  ? '' : 'none';
+  document.getElementById('almacenField').style.display  = needsAlmacen ? '' : 'none';
+  const desc = document.getElementById('rolDesc');
+  if (ROL_DESC[rol]) { desc.style.display=''; desc.textContent=ROL_DESC[rol]; }
+  else desc.style.display = 'none';
+}
+
+const ROL_DESC = {
+  admin:'Acceso completo al sistema: inventario, SKUs, clientes, almacenes, usuarios, mapas y configuración.',
+  supervisor:'Ver, imprimir, descargar y subir reportes para su almacén/cliente asignado. Puede modificar el mapa de su almacén. Sin acceso a configuración.',
+  cliente:'Solo puede ver, imprimir y descargar reportes para los almacenes asignados. Sin acceso a configuración ni Entrada AI.',
+  operador:'Puede modificar inventario y SKUs de su cliente/almacén asignado. Usa Entrada AI y ve reportes de su asignación.',
+};
+
+async function saveUser() {
+  const nombre   = document.getElementById('umNombre').value.trim();
+  const username = document.getElementById('umUsername').value.trim().toLowerCase();
+  const password = document.getElementById('umPassword').value;
+  const rol      = document.getElementById('umRol').value;
+
+  if (!nombre || !username || !rol) { showToast('Nombre, usuario y rol son obligatorios', 'warning'); return; }
+  if (!editingId && !password)      { showToast('Ingresa una contraseña temporal', 'warning'); return; }
+
+  const btn = document.getElementById('umSaveBtn');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    if (!editingId) {
+      // Create via Supabase auth
+      const email = `${username}@ideascan.wms`;
+      const { data: authData, error: authErr } = await db.auth.admin
+        ? await db.auth.admin.createUser({ email, password, email_confirm: true })
+        : await db.auth.signUp({ email, password });
+      // If admin API not available, use edge function or direct insert
+    }
+
+    const payload = {
+      nombre,
+      apellido:      document.getElementById('umApellido').value.trim() || null,
+      nombre_display:`${nombre} ${document.getElementById('umApellido').value.trim()}`.trim(),
+      username,
+      email:         document.getElementById('umEmail').value.trim() || `${username}@ideascan.wms`,
+      rol,
+      cliente_id:    document.getElementById('umCliente').value || null,
+      almacen_id:    document.getElementById('umAlmacen').value || null,
+      estado:        'active',
+      ...(password ? { password_hash: password } : {}),
+    };
+
+    if (editingId) {
+      const { error } = await Q.from('usuarios').update(payload).eq('id', editingId);
+      if (error) throw error;
+      showToast('✅ Usuario actualizado', 'success');
+    } else {
+      const { error } = await Q.from('usuarios').insert(payload);
+      if (error) throw error;
+      showToast(`✅ Usuario @${username} creado`, 'success');
+    }
+    closeUserModal();
+    renderUsuarios();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Actualizar' : 'Crear Usuario';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  DELETE
+// ══════════════════════════════════════════════════════════════════════════
+let deleteCallback = null;
+function confirmDelete(type, id, name) {
+  document.getElementById('delTitle').textContent = `¿Eliminar ${type}?`;
+  document.getElementById('delSub').textContent = name;
+  deleteCallback = async () => {
+    const tableMap = { cliente:'clientes', almacen:'almacenes', usuario:'usuarios' };
+    const table = tableMap[type];
+    if (!table) return;
+    const { error } = type === 'usuario'
+      ? await Q.from(table).update({ estado:'inactive' }).eq('id', id)
+      : await Q.from(table).update({ activo: false }).eq('id', id);
+    if (error) { showToast('Error: '+error.message, 'error'); return; }
+    showToast('✅ Eliminado correctamente', 'success');
+    closeDelete();
+    await loadMeta();
+    if (currentTab === 'clientes')  renderClientes();
+    if (currentTab === 'almacenes') renderAlmacenes();
+    if (currentTab === 'usuarios')  renderUsuarios();
+  };
+  document.getElementById('delConfirmBtn').onclick = deleteCallback;
+  document.getElementById('deleteModal').classList.add('open');
+}
+function closeDelete() { document.getElementById('deleteModal').classList.remove('open'); }
+</script>
+</body>
+</html>
