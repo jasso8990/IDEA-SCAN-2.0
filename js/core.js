@@ -53,10 +53,10 @@ const ROLES = {
 
 function canAccess(user, permission) {
   const perms = {
-    admin: ['config','mapa','inventario','ordenes','ai_entry','martech','reportes','usuarios'],
+    admin: ['config','mapa','inventario','ordenes','salidas','ai_entry','martech','reportes','usuarios'],
     supervisor: ['inventario','ordenes','reportes','mapa_asignado'],
     cliente: ['inventario','ordenes','reportes'],
-    operador: ['inventario','ordenes','ai_entry','martech','mapa_asignado'],
+    operador: ['inventario','ordenes','salidas','ai_entry','martech','mapa_asignado'],
   };
   return (perms[user?.rol] || []).includes(permission);
 }
@@ -74,6 +74,7 @@ function getNavItems(user) {
   const all = [
     { id:'inventario', label:'Inventario',    icon:'📦', href:'inventario.html',    roles:['admin','supervisor','cliente','operador'] },
     { id:'ordenes',    label:'Órdenes',        icon:'📋', href:'ordenes.html',       roles:['admin','supervisor','cliente','operador'] },
+    { id:'salidas',    label:'Salidas Scan',    icon:'📤', href:'salidas.html',       roles:['admin','supervisor','cliente','operador'] },
     { id:'ai_entry',   label:'Entrada con AI', icon:'🤖', href:'ai-entry.html',      roles:['admin','operador'] },
     { id:'martech',    label:'Entrada MARTECH',icon:'🏭', href:'martech-entry.html', roles:['admin','operador'] },
     { id:'reportes',   label:'Reportes',       icon:'📊', href:'reportes.html',      roles:['admin','supervisor','cliente'], desktopOnly:true },
