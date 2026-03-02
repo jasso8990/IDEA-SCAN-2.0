@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Salidas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>📤</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+/* ── Phase stepper ── */
+.phase-bar{display:flex;background:white;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:18px;}
+.phase{flex:1;display:flex;flex-direction:column;align-items:center;padding:11px 4px;border-right:1px solid var(--border);gap:3px;opacity:.28;transition:all .25s;cursor:default;}
+.phase:last-child{border-right:none;}
+.phase.active{opacity:1;background:linear-gradient(135deg,rgba(13,43,122,.04),rgba(0,194,255,.04));}
+.phase.done{opacity:.7;}
+.phase-num{width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--text-300);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;transition:all .25s;}
+.phase.active .phase-num{background:var(--navy);color:white;}
+.phase.done .phase-num{background:var(--success);color:white;}
+.phase-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-300);text-align:center;}
+.phase.active .phase-lbl,.phase.done .phase-lbl{color:var(--navy);}
+
+/* ── Upload zone ── */
+.upload-zone{
+  border:2.5px dashed var(--border);border-radius:18px;
+  background:white;padding:48px 24px;text-align:center;
+  transition:all .2s;cursor:pointer;position:relative;
+}
+.upload-zone:hover,.upload-zone.drag{
+  border-color:var(--cyan);background:rgba(0,194,255,.03);
+}
+.upload-zone input[type=file]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+}
+.upload-icon{font-size:52px;margin-bottom:12px;line-height:1;}
+.upload-title{font-family:'Exo 2',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px;}
+.upload-sub{font-size:13px;color:var(--text-300);}
+
+/* ── Manifest card ── */
+.manifest-card{
+  background:white;border-radius:16px;border:1px solid var(--border);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.manifest-header{
+  background:linear-gradient(135deg,#0d2b7a,#1a3d9e);
+  padding:14px 20px;display:flex;align-items:center;gap:14px;
+}
+.manifest-title{color:white;font-family:'Exo 2',sans-serif;font-size:16px;font-weight:800;}
+.manifest-sub{color:rgba(255,255,255,.5);font-size:11px;margin-top:1px;}
+.manifest-meta{padding:14px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;border-bottom:1px solid var(--border);}
+.meta-item{display:flex;flex-direction:column;gap:2px;}
+.meta-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-300);}
+.meta-val{font-size:13px;font-weight:700;color:var(--navy);font-family:'JetBrains Mono',monospace;}
+
+/* ── SKU grid ── */
+.sku-grid{padding:14px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;max-height:340px;overflow-y:auto;}
+.sku-chip{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;border-radius:10px;
+  background:var(--surface);border:1.5px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+  color:var(--text-500);transition:all .25s;position:relative;
+  overflow:hidden;
+}
+.sku-chip::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .25s;
+  background:linear-gradient(135deg,rgba(34,199,122,.15),rgba(34,199,122,.05));
+}
+.sku-chip.found{
+  border-color:#22c77a;color:#15803d;
+  box-shadow:0 0 0 3px rgba(34,199,122,.12);
+}
+.sku-chip.found::before{opacity:1;}
+.sku-chip.found .sku-dot{background:#22c77a;box-shadow:0 0 0 3px rgba(34,199,122,.3);}
+.sku-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--border);flex-shrink:0;transition:all .3s;
+}
+.sku-bultos{
+  margin-left:auto;font-size:9px;font-weight:700;
+  background:var(--border);color:var(--text-300);
+  padding:1px 6px;border-radius:20px;flex-shrink:0;
+}
+.sku-chip.found .sku-bultos{background:rgba(34,199,122,.2);color:#15803d;}
+
+/* ── Progress bar ── */
+.prog-wrap{padding:0 20px 14px;}
+.prog-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;font-weight:700;}
+.prog-bar{height:8px;background:var(--border);border-radius:10px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#22c77a,#16a34a);transition:width .5s cubic-bezier(.4,0,.2,1);}
+.prog-pct{color:var(--navy);}
+.prog-count{color:var(--text-300);}
+
+/* ── Camera panel ── */
+.cam-panel{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;}
+.cam-panel-header{background:linear-gradient(135deg,#0d2b7a,#1a3d9e);padding:12px 16px;display:flex;align-items:center;gap:10px;}
+.cam-panel-title{color:white;font-family:'Exo 2',sans-serif;font-size:14px;font-weight:800;flex:1;}
+.cam-box{background:#060c1f;position:relative;aspect-ratio:4/3;}
+.cam-box video{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-guide{position:absolute;inset:0;pointer-events:none;}
+.cg{position:absolute;width:32px;height:32px;border:3px solid var(--cyan);}
+.cg.tl{top:12px;left:12px;border-right:none;border-bottom:none;border-radius:3px 0 0 0;}
+.cg.tr{top:12px;right:12px;border-left:none;border-bottom:none;border-radius:0 3px 0 0;}
+.cg.bl{bottom:12px;left:12px;border-right:none;border-top:none;border-radius:0 0 0 3px;}
+.cg.br{bottom:12px;right:12px;border-left:none;border-top:none;border-radius:0 0 3px 0;}
+.scan-line{position:absolute;left:12px;right:12px;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:sl 2.5s ease-in-out infinite;}
+@keyframes sl{0%,100%{top:8%}50%{top:88%}}
+.cam-status{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);backdrop-filter:blur(8px);color:white;font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;}
+.cam-badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.65);color:white;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;}
+
+/* ── Scan results overlay on image ── */
+.scan-result-wrap{position:relative;margin-top:10px;}
+.scan-result-img{width:100%;border-radius:10px;display:block;}
+.scan-result-overlay{position:absolute;inset:0;pointer-events:none;}
+/* highlighted SKU tag over image */
+.sku-tag{
+  position:absolute;
+  background:rgba(34,199,122,.9);color:white;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:4px;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  animation:tagIn .3s ease;
+  white-space:nowrap;
+}
+@keyframes tagIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+.sku-tag-new{background:rgba(0,194,255,.9);}
+
+/* ── Controls ── */
+.cam-controls{display:flex;gap:10px;padding:12px 14px;flex-wrap:wrap;}
+.btn-capture{
+  flex:1;padding:13px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,#0d2b7a,#2d6ef5);color:white;
+  font-family:'Exo 2',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;box-shadow:0 4px 18px rgba(13,43,122,.3);transition:all .2s;
+}
+.btn-capture:hover{transform:translateY(-1px);}
+.btn-capture:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-scan-ai{
+  flex:1;padding:13px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,#00c2ff,#0d2b7a);color:white;
+  font-family:'Exo 2',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;transition:all .2s;
+}
+.btn-scan-ai:hover{transform:translateY(-1px);}
+.btn-scan-ai:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* ── Photo gallery ── */
+.photo-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 14px 10px;scrollbar-width:none;}
+.photo-strip::-webkit-scrollbar{display:none;}
+.pthumb{position:relative;flex-shrink:0;width:70px;height:53px;border-radius:8px;overflow:hidden;border:2px solid var(--border);cursor:pointer;transition:border-color .15s;}
+.pthumb.scanned{border-color:#22c77a;}
+.pthumb.scanning{border-color:var(--cyan);}
+.pthumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.pthumb-badge{position:absolute;bottom:2px;left:2px;background:rgba(34,199,122,.9);color:white;font-size:8px;font-weight:800;padding:1px 4px;border-radius:3px;}
+.pthumb-del{position:absolute;top:2px;right:2px;background:rgba(239,68,68,.85);color:white;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1;}
+.pthumb:hover .pthumb-del{display:flex;}
+
+/* ── Confirm button ── */
+.btn-confirm{
+  width:100%;padding:18px;border:none;border-radius:16px;
+  background:linear-gradient(135deg,#22c77a,#16a34a);color:white;
+  font-family:'Exo 2',sans-serif;font-size:18px;font-weight:900;
+  cursor:pointer;box-shadow:0 8px 32px rgba(34,199,122,.35);
+  transition:all .25s;display:flex;align-items:center;justify-content:center;gap:12px;
+  margin-top:16px;
+}
+.btn-confirm:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(34,199,122,.45);}
+.btn-confirm:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.btn-confirm .confirm-badge{
+  background:rgba(255,255,255,.25);padding:3px 10px;
+  border-radius:20px;font-size:13px;font-weight:700;
+}
+
+/* ── AI overlay ── */
+.ai-overlay{position:fixed;inset:0;background:rgba(6,12,31,.88);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px;}
+.ai-overlay.open{display:flex;}
+.ai-spin{width:64px;height:64px;border-radius:50%;border:4px solid rgba(0,194,255,.2);border-top-color:var(--cyan);animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-ol-text{color:white;font-family:'Exo 2',sans-serif;font-size:17px;font-weight:700;}
+.ai-ol-sub{color:rgba(255,255,255,.5);font-size:12px;text-align:center;max-width:280px;}
+.ai-found-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:320px;}
+.ai-chip{background:rgba(34,199,122,.2);border:1px solid rgba(34,199,122,.5);color:#22c77a;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;}
+
+/* ── Export panel ── */
+.export-panel{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-top:16px;}
+.export-header{background:linear-gradient(135deg,#22c77a,#16a34a);padding:14px 20px;}
+.export-title{color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;}
+.export-body{padding:16px 20px;display:flex;flex-direction:column;gap:10px;}
+.export-btn{
+  padding:13px 20px;border-radius:12px;border:none;
+  font-family:'Exo 2',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .2s;
+}
+.export-btn:hover{transform:translateY(-1px);}
+.export-btn.xlsx{background:linear-gradient(135deg,#22c77a,#16a34a);color:white;box-shadow:0 4px 16px rgba(34,199,122,.3);}
+.export-btn.email{background:linear-gradient(135deg,#0d2b7a,#2d6ef5);color:white;box-shadow:0 4px 16px rgba(13,43,122,.3);}
+.export-btn.reset{background:var(--surface);color:var(--navy);border:1px solid var(--border);}
+
+/* ── Summary stats ── */
+.summary-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);}
+.stat-box{text-align:center;padding:10px;border-radius:10px;background:var(--surface);}
+.stat-num{font-family:'Exo 2',sans-serif;font-size:26px;font-weight:900;color:var(--navy);}
+.stat-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-300);margin-top:2px;}
+.stat-box.green .stat-num{color:#16a34a;}
+.stat-box.red .stat-num{color:#dc2626;}
+
+/* ── Two-col layout ── */
+.two-col{display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start;}
+@media(max-width:1000px){.two-col{grid-template-columns:1fr;}}
+
+/* ── Borradores (saved manifests) ── */
+.borradores-panel{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-top:18px;}
+.borradores-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.borradores-title{font-family:'Exo 2',sans-serif;font-size:14px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px;}
+.borradores-list{display:flex;flex-direction:column;gap:0;}
+.borrador-item{
+  display:flex;align-items:center;gap:12px;padding:12px 18px;
+  border-bottom:1px solid var(--border);cursor:pointer;
+  transition:background .15s;
+}
+.borrador-item:last-child{border-bottom:none;}
+.borrador-item:hover{background:rgba(13,43,122,.03);}
+.borrador-icon{
+  width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:18px;flex-shrink:0;
+}
+.borrador-icon.pendiente{background:rgba(245,158,11,.1);}
+.borrador-icon.en_proceso{background:rgba(0,194,255,.1);}
+.borrador-info{flex:1;min-width:0;}
+.borrador-folio{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--navy);}
+.borrador-meta{font-size:10px;color:var(--text-300);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.borrador-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;}
+.borrador-badge.pendiente{background:rgba(245,158,11,.12);color:#b45309;}
+.borrador-badge.en_proceso{background:rgba(0,194,255,.12);color:#0369a1;}
+.borrador-actions{display:flex;gap:6px;flex-shrink:0;}
+.borrador-btn{border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
+.borrador-btn.open{background:var(--navy);color:white;}
+.borrador-btn.open:hover{background:#1a3d9e;}
+.borrador-btn.del{background:rgba(239,68,68,.1);color:#dc2626;}
+.borrador-btn.del:hover{background:rgba(239,68,68,.2);}
+.borrador-progress{height:3px;background:var(--border);border-radius:2px;margin-top:4px;}
+.borrador-progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#22c77a,#16a34a);transition:width .3s;}
+
+/* ── Toast ── */
+.scan-toast{
+  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  background:#1e293b;color:white;font-family:'Exo 2',sans-serif;font-weight:700;font-size:13px;
+  padding:10px 20px;border-radius:30px;box-shadow:0 8px 28px rgba(0,0,0,.3);
+  z-index:8888;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;
+}
+.scan-toast.show{opacity:1;}
+.scan-toast.green{background:#16a34a;}
+.scan-toast.cyan{background:#0284c7;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+    <div class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">Salidas <span>Scan</span></div>
+      <div class="header-actions">
+        <span id="areaBadge" class="badge badge-navy" style="display:none;font-size:11px;padding:5px 11px;"></span>
+        <button class="header-btn" onclick="resetAll()">🔄 Nueva</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- Steps -->
+      <div class="phase-bar">
+        <div class="phase active" id="ph1"><div class="phase-num">1</div><div class="phase-lbl">📄 Manifiesto</div></div>
+        <div class="phase"        id="ph2"><div class="phase-num">2</div><div class="phase-lbl">📷 Escanear</div></div>
+        <div class="phase"        id="ph3"><div class="phase-num">3</div><div class="phase-lbl">✅ Confirmar</div></div>
+        <div class="phase"        id="ph4"><div class="phase-num">4</div><div class="phase-lbl">📊 Exportar</div></div>
+        <div class="phase"        id="ph5"><div class="phase-num">5</div><div class="phase-lbl">🚛 Despacho</div></div>
+      </div>
+
+      <!-- ═══ PHASE 1: Upload manifest ═══ -->
+      <div id="phase1">
+        <div class="upload-zone" id="uploadZone"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="handleDrop(event)">
+          <input type="file" accept=".xlsx,.xls,.csv,image/*" onchange="handleFileInput(this)">
+          <div class="upload-icon">📋</div>
+          <div class="upload-title">Sube el manifiesto de salida</div>
+          <div class="upload-sub">Excel (.xlsx / .xls), CSV o imagen del documento<br>
+            <span style="color:var(--cyan);font-weight:600;">También puedes fotografiar el documento directamente</span>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin:16px 0;font-size:12px;color:var(--text-300);font-weight:600;">— O —</div>
+
+        <!-- Camera capture of manifest -->
+        <div style="background:white;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#0d2b7a,#1a3d9e);padding:11px 16px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📸</span>
+            <span style="color:white;font-family:'Exo 2',sans-serif;font-size:13px;font-weight:800;">Fotografiar documento</span>
+          </div>
+          <div style="padding:12px;">
+            <div class="cam-box" id="manifestCamBox" style="border-radius:10px;overflow:hidden;aspect-ratio:4/3;">
+              <video id="manifestVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+              <div class="cam-guide"><div class="cg tl"></div><div class="cg tr"></div><div class="cg bl"></div><div class="cg br"></div></div>
+              <div class="cam-status" id="manifestCamStatus">Iniciando cámara...</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+              <button class="btn-capture" id="manifestCaptureBtn" onclick="captureManifest()" disabled style="flex:2;">
+                📸 Capturar y Analizar Manifiesto
+              </button>
+              <label class="btn btn-ghost" style="padding:12px 14px;cursor:pointer;border-radius:12px;font-weight:700;font-size:12px;display:flex;align-items:center;">
+                📁 Subir
+                <input type="file" accept="image/*,.xlsx,.xls,.csv" style="display:none" onchange="handleFileInput(this)">
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <!-- ═══ BORRADORES (saved manifests) ═══ -->
+        <div class="borradores-panel" id="borradoresPanel">
+          <div class="borradores-header">
+            <div class="borradores-title">
+              <span>📂</span> Manifiestos guardados
+              <span style="font-size:10px;background:var(--border);color:var(--text-300);padding:2px 8px;border-radius:20px;" id="borradoresCount">0</span>
+            </div>
+            <button class="btn btn-ghost btn-xs" onclick="loadBorradores()" style="font-size:11px;">🔄 Actualizar</button>
+          </div>
+          <div id="borradoresList">
+            <div style="padding:24px;text-align:center;color:var(--text-300);font-size:12px;">
+              Cargando manifiestos guardados...
+            </div>
+          </div>
+        </div>
+      </div><!-- /phase1 -->
+
+      <!-- ═══ PHASE 2+3: Scan + Manifest view ═══ -->
+      <div id="phase23" style="display:none;">
+        <div class="two-col">
+
+          <!-- LEFT: Manifest info + SKU list -->
+          <div>
+            <div class="manifest-card">
+              <div class="manifest-header">
+                <div style="flex:1;min-width:0;">
+                  <div class="manifest-title" id="manifestTitle">Manifiesto —</div>
+                  <div class="manifest-sub" id="manifestSub">Cargado</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <div style="text-align:right;">
+                    <div style="color:rgba(255,255,255,.4);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Seal</div>
+                    <div style="color:white;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;" id="sealDisplay">—</div>
+                  </div>
+                  <button onclick="saveManifestDraft()" id="saveDraftBtn"
+                    style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;
+                           border-radius:8px;padding:5px 12px;font-size:10px;font-weight:700;cursor:pointer;
+                           white-space:nowrap;transition:background .15s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.25)'"
+                    onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                    💾 Guardar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Meta info row -->
+              <div class="manifest-meta">
+                <div class="meta-item">
+                  <div class="meta-lbl">Departamento</div>
+                  <div class="meta-val" id="metaDept">—</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-lbl">Fecha</div>
+                  <div class="meta-val" id="metaFecha">—</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-lbl">Área</div>
+                  <div class="meta-val" id="metaArea">—</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-lbl">Truck</div>
+                  <div class="meta-val" id="metaTruck">—</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-lbl">Plates</div>
+                  <div class="meta-val" id="metaPlates">—</div>
+                </div>
+                <div class="meta-item">
+                  <div class="meta-lbl">Total ECO</div>
+                  <div class="meta-val" id="metaTotal">—</div>
+                </div>
+              </div>
+
+              <!-- Progress -->
+              <div class="prog-wrap">
+                <div class="prog-header">
+                  <span class="prog-count" id="progText">0 / 0 identificados</span>
+                  <span class="prog-pct" id="progPct">0%</span>
+                </div>
+                <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+              </div>
+
+              <!-- Stats -->
+              <div class="summary-stats">
+                <div class="stat-box green">
+                  <div class="stat-num" id="statFound">0</div>
+                  <div class="stat-lbl">Identificados</div>
+                </div>
+                <div class="stat-box red">
+                  <div class="stat-num" id="statPending">0</div>
+                  <div class="stat-lbl">Pendientes</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-num" id="statTotal">0</div>
+                  <div class="stat-lbl">Total ECOs</div>
+                </div>
+              </div>
+
+              <!-- SKU chips grid -->
+              <div class="sku-grid" id="skuGrid"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Camera for scanning -->
+          <div>
+            <div class="cam-panel">
+              <div class="cam-panel-header">
+                <span style="font-size:18px;">🔍</span>
+                <span class="cam-panel-title">Escáner de Entries</span>
+                <span id="scanBadge" style="background:rgba(0,194,255,.2);color:var(--cyan);font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;">0 fotos</span>
+              </div>
+
+              <div class="cam-box" id="scanCamBox">
+                <video id="scanVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+                <div class="cam-guide"><div class="cg tl"></div><div class="cg tr"></div><div class="cg bl"></div><div class="cg br"></div><div class="scan-line"></div></div>
+                <div class="cam-status" id="scanCamStatus">Iniciando cámara...</div>
+                <div class="cam-badge" id="scanCamBadge" style="display:none;">📸 <span id="scanPhotoCount">0</span></div>
+              </div>
+
+              <div class="cam-controls">
+                <button class="btn-capture" id="scanCaptureBtn" onclick="captureForScan()" disabled>
+                  📸 Capturar
+                </button>
+                <label class="btn btn-ghost" style="padding:12px 13px;cursor:pointer;border-radius:12px;font-weight:700;font-size:12px;display:flex;align-items:center;gap:4px;">
+                  📁 Subir
+                  <input type="file" accept="image/*" multiple style="display:none" onchange="uploadScanPhotos(this)">
+                </label>
+                <button class="btn-scan-ai" id="scanAIBtn" onclick="scanAllPending()" disabled>
+                  🤖 Escanear
+                </button>
+              </div>
+
+              <!-- Photo strip -->
+              <div class="photo-strip" id="photoStrip"></div>
+
+            </div>
+
+            <!-- Confirm button (shown when 100%) -->
+            <div id="confirmSection" style="display:none;">
+              <button class="btn-confirm" onclick="confirmAndExport()">
+                ✅ Confirmar y Generar Reporte
+                <span class="confirm-badge" id="confirmBadge">0 / 0</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PHASE 4: Export ═══ -->
+      <div id="phase4" style="display:none;">
+        <div class="two-col">
+          <div>
+            <div class="manifest-card">
+              <div class="manifest-header" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+                <div style="flex:1;">
+                  <div class="manifest-title">📋 Primera confirmación registrada</div>
+                  <div class="manifest-sub" id="exportSub">Pendiente confirmación de despacho</div>
+                </div>
+                <span style="background:rgba(255,255,255,.2);color:white;font-size:10px;font-weight:800;padding:4px 12px;border-radius:20px;">PASO 1 / 2</span>
+              </div>
+              <div class="summary-stats">
+                <div class="stat-box green"><div class="stat-num" id="expFound">0</div><div class="stat-lbl">Identificados</div></div>
+                <div class="stat-box red"><div class="stat-num" id="expMissing">0</div><div class="stat-lbl">No encontrados</div></div>
+                <div class="stat-box"><div class="stat-num" id="expTotal">0</div><div class="stat-lbl">Total</div></div>
+              </div>
+              <div class="sku-grid" id="exportSkuGrid" style="max-height:400px;"></div>
+            </div>
+          </div>
+          <div>
+            <div class="export-panel">
+              <div class="export-header">
+                <div class="export-title">📊 Exportar Reporte</div>
+              </div>
+              <div class="export-body">
+                <!-- Step 1: Download/email first -->
+                <div style="font-size:10px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Paso 1 — Registrar</div>
+                <button class="export-btn xlsx" onclick="downloadExcel()">
+                  <span style="font-size:20px;">📊</span>
+                  <span>Descargar Excel</span>
+                </button>
+                <button class="export-btn email" onclick="sendEmail()">
+                  <span style="font-size:20px;">📧</span>
+                  <span>Enviar por correo</span>
+                </button>
+                <!-- Step 2: Dispatch confirmation -->
+                <div style="font-size:10px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:.8px;margin:8px 0 4px;">Paso 2 — Confirmar Despacho</div>
+                <button class="export-btn" id="dispatchBtn" onclick="startDispatchConfirmation()"
+                  style="background:linear-gradient(135deg,#0d2b7a,#2d6ef5);color:white;box-shadow:0 4px 16px rgba(13,43,122,.3);">
+                  <span style="font-size:20px;">🚛</span>
+                  <div style="text-align:left;">
+                    <div>Confirmar Despacho</div>
+                    <div style="font-size:10px;opacity:.7;">Foto de carga + foto del Sello</div>
+                  </div>
+                </button>
+                <button class="export-btn reset" onclick="resetAll()">
+                  <span style="font-size:18px;">🔄</span>
+                  <span>Nueva salida</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PHASE 5: Dispatch confirmation ═══ -->
+      <div id="phase5" style="display:none;">
+        <div style="max-width:560px;margin:0 auto;">
+
+          <!-- Order summary header -->
+          <div style="background:linear-gradient(135deg,#0d2b7a,#1a3d9e);border-radius:16px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;">🚛 Confirmación de Despacho</div>
+              <div style="color:rgba(255,255,255,.5);font-size:11px;margin-top:2px;" id="dispatchOrderInfo">Cargando...</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="color:rgba(255,255,255,.4);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">SEAL esperado</div>
+              <div style="color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:900;" id="dispatchSealExpected">—</div>
+            </div>
+          </div>
+
+          <!-- Photo 1: Loaded cargo -->
+          <div class="cam-panel" style="margin-bottom:14px;">
+            <div class="cam-panel-header">
+              <span style="font-size:18px;">📦</span>
+              <span class="cam-panel-title">Foto 1 — Material cargado</span>
+              <span id="p1badge" style="background:rgba(245,158,11,.2);color:#d97706;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;">Pendiente</span>
+            </div>
+            <div id="dispatch_p1_preview" style="display:none;position:relative;">
+              <img id="dispatch_p1_img" style="width:100%;display:block;border-radius:0;" src="">
+              <button onclick="clearDispatchPhoto(1)" style="position:absolute;top:8px;right:8px;background:rgba(239,68,68,.85);color:white;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">🔄 Retomar</button>
+            </div>
+            <div id="dispatch_p1_cam" class="cam-box">
+              <video id="dispatchV1" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+              <div class="cam-guide"><div class="cg tl"></div><div class="cg tr"></div><div class="cg bl"></div><div class="cg br"></div></div>
+              <div class="cam-status" id="dp1status">Iniciando cámara...</div>
+            </div>
+            <div style="display:flex;gap:10px;padding:12px 14px;">
+              <button class="btn-capture" id="dp1captureBtn" onclick="captureDispatch(1)" disabled style="flex:2;">📸 Capturar material</button>
+              <label class="btn btn-ghost" style="padding:12px 13px;cursor:pointer;border-radius:12px;font-weight:700;font-size:12px;display:flex;align-items:center;">
+                📁<input type="file" accept="image/*" style="display:none" onchange="uploadDispatch(1,this)">
+              </label>
+            </div>
+          </div>
+
+          <!-- Photo 2: Seal -->
+          <div class="cam-panel" style="margin-bottom:14px;">
+            <div class="cam-panel-header">
+              <span style="font-size:18px;">🔒</span>
+              <span class="cam-panel-title">Foto 2 — Número de Sello</span>
+              <span id="p2badge" style="background:rgba(245,158,11,.2);color:#d97706;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;">Pendiente</span>
+            </div>
+            <div id="dispatch_p2_preview" style="display:none;position:relative;">
+              <img id="dispatch_p2_img" style="width:100%;display:block;border-radius:0;" src="">
+              <button onclick="clearDispatchPhoto(2)" style="position:absolute;top:8px;right:8px;background:rgba(239,68,68,.85);color:white;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">🔄 Retomar</button>
+            </div>
+            <div id="dispatch_p2_cam" class="cam-box">
+              <video id="dispatchV2" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+              <div class="cam-guide"><div class="cg tl"></div><div class="cg tr"></div><div class="cg bl"></div><div class="cg br"></div></div>
+              <div class="cam-status" id="dp2status">Iniciando...</div>
+            </div>
+            <div style="display:flex;gap:10px;padding:12px 14px;">
+              <button class="btn-capture" id="dp2captureBtn" onclick="captureDispatch(2)" disabled style="flex:2;">📸 Capturar sello</button>
+              <label class="btn btn-ghost" style="padding:12px 13px;cursor:pointer;border-radius:12px;font-weight:700;font-size:12px;display:flex;align-items:center;">
+                📁<input type="file" accept="image/*" style="display:none" onchange="uploadDispatch(2,this)">
+              </label>
+            </div>
+          </div>
+
+          <!-- AI result box (hidden until processed) -->
+          <div id="dispatchAIResult" style="display:none;background:white;border-radius:14px;border:1px solid var(--border);padding:16px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">Resultado AI</div>
+            <div id="sealVerifyResult"></div>
+          </div>
+
+          <!-- Process button -->
+          <button class="btn-confirm" id="processDispatchBtn" onclick="processDispatch()" disabled
+            style="background:linear-gradient(135deg,#0d2b7a,#2d6ef5);box-shadow:0 8px 28px rgba(13,43,122,.3);">
+            🤖 Verificar Sello y Completar Despacho
+          </button>
+          <button class="btn btn-ghost" onclick="goBackToPhase4()" style="width:100%;margin-top:10px;padding:12px;border-radius:12px;font-size:13px;">
+            ← Volver
+          </button>
+
+        </div>
+      </div>
+
+    </div><!-- page-body -->
+  </div>
+</div>
+
+<!-- AI overlay -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-spin"></div>
+  <div class="ai-ol-text" id="aiOlText">🤖 Analizando...</div>
+  <div class="ai-ol-sub" id="aiOlSub">Detectando entries en la imagen</div>
+  <div class="ai-found-chips" id="aiFoundChips"></div>
+</div>
+
+<!-- Scan toast -->
+<div class="scan-toast" id="scanToast"></div>
+
+<div class="bottom-nav" id="bottomNav"></div>
+<div class="toast" id="globalToast"></div>
+
+<script src="../js/core.js"></script>
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════════════════
+let USER = null;
+let manifest = null;   // { dept, fecha, area, truck, plates, seal, entries:[{sku,bultos}] }
+let scanPhotos = [];   // [{dataUrl, scanned:bool, foundSkus:[]}]
+let manifestStream = null;
+let scanStream     = null;
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  USER = initPage('salidas', ['admin','operador','supervisor','cliente']);
+  if (!USER) return;
+  await checkDispatchParam();   // Check if opened from inventario ?dispatch=<id>
+  startManifestCamera();
+  loadBorradores();             // Load saved manifests on startup
+});
+
+// ═══════════════════════════════════════════════════════════
+//  PHASE HELPERS
+// ═══════════════════════════════════════════════════════════
+function setPhase(n) {
+  for (let i=1; i<=5; i++) {
+    const el = document.getElementById('ph'+i);
+    if (!el) continue;
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CAMERAS
+// ═══════════════════════════════════════════════════════════
+async function startManifestCamera() {
+  try {
+    manifestStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 } }, audio:false
+    });
+    const v = document.getElementById('manifestVideo');
+    v.srcObject = manifestStream; await v.play();
+    document.getElementById('manifestCamStatus').textContent = '✅ Listo — captura el manifiesto';
+    document.getElementById('manifestCaptureBtn').disabled = false;
+  } catch {
+    document.getElementById('manifestCamStatus').textContent = '📁 Sin cámara — sube el archivo';
+  }
+}
+
+async function startScanCamera() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 } }, audio:false
+    });
+    const v = document.getElementById('scanVideo');
+    v.srcObject = scanStream; await v.play();
+    document.getElementById('scanCamStatus').textContent = '✅ Listo — apunta a los bultos';
+    document.getElementById('scanCaptureBtn').disabled = false;
+  } catch {
+    document.getElementById('scanCamStatus').textContent = '📁 Sin cámara — sube imágenes';
+  }
+}
+
+function stopManifestCamera() {
+  if (manifestStream) { manifestStream.getTracks().forEach(t=>t.stop()); manifestStream=null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MANIFEST — UPLOAD / CAPTURE
+// ═══════════════════════════════════════════════════════════
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  const file = e.dataTransfer?.files?.[0];
+  if (file) processManifestFile(file);
+}
+
+function handleFileInput(input) {
+  const file = input.files?.[0];
+  if (file) processManifestFile(file);
+  input.value = '';
+}
+
+async function captureManifest() {
+  const v = document.getElementById('manifestVideo');
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth||1280; c.height = v.videoHeight||960;
+  c.getContext('2d').drawImage(v,0,0);
+  const dataUrl = c.toDataURL('image/jpeg',0.9);
+  await analyzeManifestImage(dataUrl);
+}
+
+async function processManifestFile(file) {
+  const ext = file.name.toLowerCase().split('.').pop();
+  if (['xlsx','xls'].includes(ext)) {
+    await parseExcelManifest(file);
+  } else if (ext === 'csv') {
+    await parseCSVManifest(file);
+  } else if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = e => analyzeManifestImage(e.target.result);
+    reader.readAsDataURL(file);
+  } else {
+    showToast('Formato no soportado. Usa .xlsx, .xls, .csv o imagen.','warning');
+  }
+}
+
+// ── Parse Excel ────────────────────────────────────────────
+async function parseExcelManifest(file) {
+  showAI('Leyendo Excel...','Extrayendo entries del manifiesto');
+  try {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, { type:'array' });
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+    const result = extractManifestFromRows(rows);
+    if (!result.entries.length) throw new Error('No se encontraron entries (SKUs) en el archivo');
+    loadManifest(result);
+  } catch(e) {
+    showToast('Error leyendo Excel: '+e.message,'error');
+  } finally { hideAI(); }
+}
+
+async function parseCSVManifest(file) {
+  const text = await file.text();
+  const rows = text.split('\n').map(r => r.split(',').map(c=>c.trim().replace(/"/g,'')));
+  const result = extractManifestFromRows(rows);
+  if (!result.entries.length) { showToast('No se encontraron entries en el CSV','warning'); return; }
+  loadManifest(result);
+}
+
+function extractManifestFromRows(rows) {
+  const result = { dept:'', fecha:'', area:'', truck:'', plates:'', seal:'', entries:[] };
+  const skuRe  = /SAF\d{6,}/i;
+  const dateRe = /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/;
+
+  rows.forEach(row => {
+    const flat = row.join(' ');
+    // Date
+    if (!result.fecha) { const m=flat.match(dateRe); if(m) result.fecha=m[0]; }
+    // Area — look for OPS/ISS/RMA/MRO/8106
+    if (!result.area) { const m=flat.match(/\b(OPS|ISS|RMA|MRO|8106)\b/); if(m) result.area=m[1]; }
+    // Seal
+    if (!result.seal) { const m=flat.match(/UL-[\w\d]+/i); if(m) result.seal=m[0]; }
+    // Truck time
+    if (!result.truck && /\d+:\d+\s*(a\.?m\.?|p\.?m\.?)/i.test(flat)) {
+      const m=flat.match(/\d+:\d+\s*(a\.?m\.?|p\.?m\.?)/i); if(m) result.truck=m[0];
+    }
+    // Plates
+    if (!result.plates && /\d{5}[A-Z]\d/i.test(flat)) {
+      const m=flat.match(/\d{5}[A-Z]\d/i); if(m) result.plates=m[0];
+    }
+    // Dept
+    if (!result.dept && /SAFRAN/i.test(flat)) result.dept='SAFRAN';
+    // Entries: find SKUs + adjacent number (ECO/bultos)
+    row.forEach((cell, ci) => {
+      const sku = String(cell).match(skuRe);
+      if (sku) {
+        let bultos = 1;
+        // Look in adjacent cells for a number
+        for (let di=-2; di<=2; di++) {
+          if (di===0) continue;
+          const adj = String(row[ci+di]||'').trim();
+          if (/^\d+$/.test(adj) && parseInt(adj)>0 && parseInt(adj)<1000) {
+            bultos = parseInt(adj); break;
+          }
+        }
+        result.entries.push({ sku: sku[0].toUpperCase(), bultos, found:false, scannedBultos:0 });
+      }
+    });
+  });
+  return result;
+}
+
+// ── Analyze manifest image with AI ────────────────────────
+async function analyzeManifestImage(dataUrl) {
+  showAI('📋 Analizando manifiesto...','La AI está leyendo el documento');
+  const base64 = dataUrl.split(',')[1];
+  const mime   = dataUrl.split(';')[0].split(':')[1]||'image/jpeg';
+
+  const prompt = `Eres un sistema WMS. Analiza esta imagen de un manifiesto/documento de salida de almacén.
+
+Extrae TODA la información visible. Busca:
+- DEPARTMENT o cliente (ej: SAFRAN)
+- FECHA (cualquier formato de fecha)
+- ÁREA (busca exactamente: OPS, ISS, RMA, MRO, 8106 — aparece en esquina superior derecha)
+- TRUCK (hora de llegada del camión)
+- PLATES o PLACAS (número de placas del camión, ej: 67015B4)
+- SEAL o sello (código alfanumérico, ej: UL-7409902)
+- ENTRIES o ECOs: son códigos tipo SAF + números (ej: SAF26021301, SAF26021292)
+- Para cada entry/SKU, busca el número de la columna ECO que indica cuántos bultos tiene
+
+Responde SOLO con JSON exacto sin markdown:
+{
+  "dept": "string",
+  "fecha": "string",
+  "area": "string",
+  "truck": "string",
+  "plates": "string",
+  "seal": "string",
+  "entries": [
+    {"sku": "SAF26021301", "bultos": 1},
+    {"sku": "SAF26021292", "bultos": 1}
+  ],
+  "confianza": 85
+}`;
+
+  try {
+    const raw    = await callVision(base64, mime, prompt);
+    console.log('[MANIFEST AI]', raw);
+    const parsed = parseAIResult(raw);
+    if (!parsed || !parsed.entries?.length) throw new Error('AI no pudo leer entries del documento');
+
+    const result = {
+      dept:    parsed.dept    || '',
+      fecha:   parsed.fecha   || '',
+      area:    parsed.area    || '',
+      truck:   parsed.truck   || '',
+      plates:  parsed.plates  || '',
+      seal:    parsed.seal    || '',
+      entries: parsed.entries.map(e => ({
+        sku:          (e.sku||'').toUpperCase(),
+        bultos:       parseInt(e.bultos)||1,
+        found:        false,
+        scannedBultos:0,
+      })).filter(e=>e.sku),
+    };
+    loadManifest(result);
+    showToast(`✅ ${result.entries.length} entries detectados`,'success');
+  } catch(e) {
+    console.error(e);
+    showToast('Error AI: '+e.message,'error');
+  } finally { hideAI(); }
+}
+
+function parseAIResult(raw) {
+  if (raw && typeof raw === 'object' && !raw.error && raw.entries) return raw;
+  const text = raw?.content?.[0]?.text || raw?.text || JSON.stringify(raw);
+  try {
+    const clean = text.replace(/```json|```/g,'').trim();
+    const m = clean.match(/\{[\s\S]*\}/);
+    return m ? JSON.parse(m[0]) : null;
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOAD MANIFEST → show phase 2
+// ═══════════════════════════════════════════════════════════
+function loadManifest(data) {
+  manifest = data;
+  stopManifestCamera();
+
+  // Update header meta
+  document.getElementById('manifestTitle').textContent = `Manifiesto — ${data.dept||'Salida'}`;
+  document.getElementById('manifestSub').textContent   = `${data.entries.length} entries · ${data.fecha||'hoy'}`;
+  document.getElementById('sealDisplay').textContent   = data.seal || '—';
+  document.getElementById('metaDept').textContent      = data.dept  || '—';
+  document.getElementById('metaFecha').textContent     = data.fecha || '—';
+  document.getElementById('metaArea').textContent      = data.area  || '—';
+  document.getElementById('metaTruck').textContent     = data.truck || '—';
+  document.getElementById('metaPlates').textContent    = data.plates|| '—';
+  document.getElementById('metaTotal').textContent     = data.entries.length;
+
+  // Area badge
+  if (data.area) {
+    const ab = document.getElementById('areaBadge');
+    ab.textContent = data.area; ab.style.display='';
+  }
+
+  renderSkuGrid();
+  updateProgress();
+
+  // Show phase 2
+  document.getElementById('phase1').style.display  = 'none';
+  document.getElementById('phase23').style.display = '';
+  setPhase(2);
+  startScanCamera();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SKU GRID
+// ═══════════════════════════════════════════════════════════
+function renderSkuGrid() {
+  const grid = document.getElementById('skuGrid');
+  grid.innerHTML = manifest.entries.map((e,i) => `
+    <div class="sku-chip ${e.found?'found':''}" id="chip-${i}" title="${e.sku} · ${e.bultos} bulto(s)">
+      <div class="sku-dot"></div>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">${e.sku}</span>
+      <span class="sku-bultos">${e.found ? `✓${e.scannedBultos||e.bultos}` : e.bultos+'b'}</span>
+    </div>`).join('');
+}
+
+function markFound(skuStr) {
+  const idx = manifest.entries.findIndex(e => e.sku === skuStr.toUpperCase());
+  if (idx === -1) return false;
+  if (!manifest.entries[idx].found) {
+    manifest.entries[idx].found = true;
+    manifest.entries[idx].scannedBultos = manifest.entries[idx].bultos;
+    // Animate chip
+    const chip = document.getElementById('chip-'+idx);
+    if (chip) {
+      chip.classList.add('found');
+      chip.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+    return true;
+  }
+  return false; // already found
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PROGRESS
+// ═══════════════════════════════════════════════════════════
+function updateProgress() {
+  if (!manifest) return;
+  const total  = manifest.entries.length;
+  const found  = manifest.entries.filter(e=>e.found).length;
+  const pct    = total ? Math.round(found/total*100) : 0;
+
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progText').textContent  = `${found} / ${total} identificados`;
+  document.getElementById('progPct').textContent   = pct+'%';
+  document.getElementById('statFound').textContent  = found;
+  document.getElementById('statPending').textContent= total-found;
+  document.getElementById('statTotal').textContent  = total;
+
+  // Confirm button
+  const confirmSec = document.getElementById('confirmSection');
+  if (found > 0) {
+    confirmSec.style.display = '';
+    document.getElementById('confirmBadge').textContent = `${found} / ${total}`;
+  }
+  if (pct === 100) {
+    setPhase(3);
+    showScanToast('🎉 ¡Todos los entries identificados!','green');
+    document.getElementById('confirmSection').style.display='';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCAN PHOTOS
+// ═══════════════════════════════════════════════════════════
+function captureForScan() {
+  const v = document.getElementById('scanVideo');
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth||1280; c.height = v.videoHeight||960;
+  c.getContext('2d').drawImage(v,0,0);
+  addScanPhoto(c.toDataURL('image/jpeg',0.85));
+}
+
+function uploadScanPhotos(input) {
+  [...input.files].forEach(f => {
+    const r = new FileReader();
+    r.onload = e => addScanPhoto(e.target.result);
+    r.readAsDataURL(f);
+  });
+  input.value='';
+}
+
+function addScanPhoto(dataUrl) {
+  scanPhotos.push({ dataUrl, scanned:false, foundSkus:[] });
+  renderPhotoStrip();
+  document.getElementById('scanAIBtn').disabled = false;
+  document.getElementById('scanCamBadge').style.display = '';
+  document.getElementById('scanPhotoCount').textContent = scanPhotos.length;
+  document.getElementById('scanBadge').textContent = scanPhotos.length + ' fotos';
+}
+
+function renderPhotoStrip() {
+  const strip = document.getElementById('photoStrip');
+  strip.innerHTML = scanPhotos.map((p,i) => `
+    <div class="pthumb ${p.scanned?'scanned':''}" id="pthumb-${i}" onclick="previewPhoto(${i})">
+      <img src="${p.dataUrl}" alt="foto ${i+1}">
+      ${p.scanned ? `<div class="pthumb-badge">✓${p.foundSkus.length}</div>` : ''}
+      <button class="pthumb-del" onclick="event.stopPropagation();removePhoto(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removePhoto(i) {
+  scanPhotos.splice(i,1);
+  renderPhotoStrip();
+  if (!scanPhotos.length) document.getElementById('scanAIBtn').disabled=true;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AI SCAN — detect SKUs in photos
+// ═══════════════════════════════════════════════════════════
+async function scanAllPending() {
+  const pending = scanPhotos.filter(p=>!p.scanned);
+  if (!pending.length) { showScanToast('Todas las fotos ya fueron escaneadas','cyan'); return; }
+
+  document.getElementById('scanAIBtn').disabled = true;
+  const skuList = manifest.entries.filter(e=>!e.found).map(e=>e.sku).join(', ');
+
+  for (let i=0; i<scanPhotos.length; i++) {
+    const p = scanPhotos[i];
+    if (p.scanned) continue;
+
+    // Mark as scanning
+    const thumb = document.getElementById('pthumb-'+i);
+    if (thumb) thumb.classList.add('scanning');
+
+    showAI(
+      `🔍 Analizando foto ${i+1} de ${scanPhotos.length}`,
+      `Buscando: ${skuList.substring(0,80)}${skuList.length>80?'...':''}`
+    );
+
+    const base64 = p.dataUrl.split(',')[1];
+    const mime   = p.dataUrl.split(';')[0].split(':')[1]||'image/jpeg';
+
+    const prompt = `Eres un sistema WMS de control de salidas. Analiza esta imagen de bultos/cajas en un almacén.
+
+LISTA DE ENTRIES ESPERADOS (los que buscas):
+${manifest.entries.map(e=>`- ${e.sku} (${e.bultos} bulto${e.bultos>1?'s':''})`).join('\n')}
+
+Tu tarea:
+1. Identifica TODOS los códigos/entries visibles en la imagen (etiquetas, stickers, labels)
+2. Compara con la lista anterior
+3. Para cada entry que encuentres, estima su posición aproximada en la imagen (como porcentaje: x%, y% desde esquina superior izquierda)
+
+Responde SOLO con JSON exacto sin markdown:
+{
+  "encontrados": [
+    {
+      "sku": "SAF26021301",
+      "en_lista": true,
+      "posicion": {"x": 25, "y": 40},
+      "confianza": 90
+    }
+  ],
+  "no_identificados": ["SAF26021292"],
+  "confianza_general": 85
+}`;
+
+    try {
+      const raw    = await callVision(base64, mime, prompt);
+      const parsed = parseAIResult(raw);
+      const found  = parsed?.encontrados || [];
+
+      // Update found chips in manifest
+      const newFound = [];
+      found.forEach(f => {
+        if (f.en_lista && f.sku) {
+          const wasNew = markFound(f.sku);
+          if (wasNew) newFound.push(f.sku);
+        }
+      });
+
+      p.scanned   = true;
+      p.foundSkus = found.map(f=>f.sku);
+      p.positions = found;
+
+      // Update AI overlay with chips
+      if (newFound.length) {
+        const chipsEl = document.getElementById('aiFoundChips');
+        chipsEl.innerHTML = newFound.map(s=>`<div class="ai-chip">✓ ${s}</div>`).join('');
+        await new Promise(r=>setTimeout(r,600));
+      }
+
+      // Thumb done
+      if (thumb) { thumb.classList.remove('scanning'); thumb.classList.add('scanned'); }
+      renderPhotoStrip();
+      updateProgress();
+      renderSkuGrid();
+
+      if (newFound.length) {
+        showScanToast(`✅ ${newFound.length} nuevo${newFound.length>1?'s':''}: ${newFound.join(', ').substring(0,50)}`, 'green');
+      }
+    } catch(e) {
+      console.error('scan photo', i, e);
+      if (thumb) thumb.classList.remove('scanning');
+    }
+  }
+
+  hideAI();
+  document.getElementById('scanAIBtn').disabled = false;
+  renderPhotoStrip();
+  updateProgress();
+
+  // Check if all done
+  const remaining = manifest.entries.filter(e=>!e.found);
+  if (remaining.length === 0) {
+    showScanToast('🎉 ¡100% completado!', 'green');
+  } else {
+    showScanToast(`⚠️ Aún faltan: ${remaining.map(e=>e.sku).join(', ').substring(0,60)}`, 'cyan');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONFIRM → EXPORT
+// ═══════════════════════════════════════════════════════════
+async function confirmAndExport() {
+  if (!manifest) return;
+  const found   = manifest.entries.filter(e=>e.found).length;
+  const total   = manifest.entries.length;
+  const missing = total - found;
+
+  document.getElementById('expFound').textContent   = found;
+  document.getElementById('expMissing').textContent  = missing;
+  document.getElementById('expTotal').textContent    = total;
+  document.getElementById('exportSub').textContent   = `${found} identificados · ${missing} pendientes`;
+
+  // Build export SKU grid
+  const grid = document.getElementById('exportSkuGrid');
+  grid.innerHTML = manifest.entries.map(e => `
+    <div class="sku-chip ${e.found?'found':''}" style="opacity:1;">
+      <div class="sku-dot"></div>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;">${e.sku}</span>
+      <span class="sku-bultos">${e.found ? '✓'+e.bultos : '⚠️'}</span>
+    </div>`).join('');
+
+  // ── Save to DB ───────────────────────────────────────────────────────────
+  await saveExitToDB();
+
+  // Show phase 4
+  document.getElementById('phase23').style.display = 'none';
+  document.getElementById('phase4').style.display  = '';
+  setPhase(4);
+}
+
+async function saveExitToDB() {
+  if (!manifest || !USER) return;
+  const now      = new Date().toISOString();
+  const fechaHoy = now.slice(0, 10);
+  const folio    = `SAL-${manifest.seal || manifest.area || 'OUT'}-${fechaHoy}`;
+
+  const foundEntries = manifest.entries.filter(e => e.found);
+  if (!foundEntries.length) return;
+
+  try {
+    // 1. Insert one movimiento per found entry
+    const movRows = foundEntries.map(e => ({
+      tipo:       'salida',
+      folio:       folio,
+      sku:         e.sku,
+      descripcion: `Salida ${manifest.dept||''} · Área: ${manifest.area||''} · Seal: ${manifest.seal||''}`,
+      cantidad:    e.bultos,
+      unidad:      'bultos',
+      referencia:  manifest.seal || null,
+      notas:       `Dept: ${manifest.dept||''} | Truck: ${manifest.truck||''} | Plates: ${manifest.plates||''} | Fecha doc: ${manifest.fecha||''}`,
+      usuario_id:  USER.id,
+      cliente_id:  USER.cliente_id || null,
+      almacen_id:  USER.almacen_id || null,
+      fecha:       now,
+    }));
+
+    const { error: movErr } = await db.schema('ideascan').from('movimientos').insert(movRows);
+    if (movErr) console.error('[SALIDA] movimientos error:', movErr);
+
+    // 2. Update inventario.estado for each found SKU → 'salida_total'
+    for (const e of foundEntries) {
+      const { error: invErr } = await db.schema('ideascan').from('inventario')
+        .update({
+          estado:       'salida_total',
+          updated_at:   now,
+        })
+        .eq('sku', e.sku)
+        .eq('estado', 'activo');   // only update active ones
+      if (invErr) console.warn('[SALIDA] inventario update SKU:', e.sku, invErr);
+    }
+
+    // 3. Store folio for Excel
+    manifest._folio = folio;
+    console.log('[SALIDA] Saved to DB — folio:', folio, '| entries:', foundEntries.length);
+    showToast(`✅ Salida registrada en inventario — ${folio}`, 'success', 5000);
+
+    // Mark draft as primera_confirmacion (waiting for dispatch confirmation)
+    if (currentDraftId) {
+      await db.schema('ideascan').from('salidas_borradores')
+        .update({
+          estado:              'primera_confirmacion',
+          fecha_primera_conf:  now,
+          updated_at:          now,
+        })
+        .eq('id', currentDraftId)
+        .catch(e => console.warn('[DRAFT PRIMERA CONF]', e));
+    }
+
+  } catch(err) {
+    console.error('[SALIDA] saveExitToDB error:', err);
+    showToast('Aviso: salida guardada localmente, error al sincronizar BD', 'warning');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXCEL EXPORT
+// ═══════════════════════════════════════════════════════════
+function downloadExcel() {
+  if (!window.XLSX || !manifest) { showToast('XLSX no disponible','error'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const now = new Date();
+  const fechaExport = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+
+  // ── Sheet 1: Summary ──────────────────────────────────────
+  const summaryRows = [
+    ['REPORTE DE SALIDA — IDEA SCAN 2.0','','','',''],
+    ['','','','',''],
+    ['Departamento:', manifest.dept||'—', '', 'Fecha:', manifest.fecha||fechaExport],
+    ['Área:', manifest.area||'—', '', 'Truck:', manifest.truck||'—'],
+    ['Plates:', manifest.plates||'—', '', 'Seal:', manifest.seal||'—'],
+    ['Operador:', USER.nombre||USER.username||'—', '', 'Generado:', fechaExport],
+    ['','','','',''],
+    ['Total entries:', manifest.entries.length, '', 'Identificados:', manifest.entries.filter(e=>e.found).length],
+    ['Pendientes:', manifest.entries.filter(e=>!e.found).length, '', 'Completado:', Math.round(manifest.entries.filter(e=>e.found).length/manifest.entries.length*100)+'%'],
+    ['','','','',''],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary['!cols'] = [{wch:18},{wch:22},{wch:4},{wch:16},{wch:22}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen');
+
+  // ── Sheet 2: Entries detail ───────────────────────────────
+  const headers = ['#', 'ENTRY / SKU', 'ECO (Bultos)', 'Estado', 'Área', 'Fecha Escaneo'];
+  const rows = [headers, ...manifest.entries.map((e,i) => [
+    i+1,
+    e.sku,
+    e.bultos,
+    e.found ? 'IDENTIFICADO' : 'PENDIENTE',
+    manifest.area || '—',
+    e.found ? fechaExport : '',
+  ])];
+  const wsDetail = XLSX.utils.aoa_to_sheet(rows);
+  wsDetail['!cols'] = [{wch:5},{wch:18},{wch:14},{wch:16},{wch:10},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsDetail, 'Entries');
+
+  // ── Sheet 3: Pending (not found) ─────────────────────────
+  const pending = manifest.entries.filter(e=>!e.found);
+  if (pending.length) {
+    const wsPend = XLSX.utils.aoa_to_sheet([
+      ['ENTRIES PENDIENTES'],[''],
+      ['#','ENTRY / SKU','ECO (Bultos)'],
+      ...pending.map((e,i)=>[i+1, e.sku, e.bultos])
+    ]);
+    wsPend['!cols'] = [{wch:5},{wch:18},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, wsPend, 'Pendientes');
+  }
+
+  const fecha = (manifest.fecha||fechaExport).replace(/\//g,'-');
+  XLSX.writeFile(wb, `Salida_${manifest.dept||'Reporte'}_${fecha}_${manifest.seal||'NoSeal'}.xlsx`);
+  showToast('✅ Excel descargado','success');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EMAIL
+// ═══════════════════════════════════════════════════════════
+function sendEmail() {
+  if (!manifest) return;
+  const found   = manifest.entries.filter(e=>e.found);
+  const missing = manifest.entries.filter(e=>!e.found);
+  const subject = encodeURIComponent(`Reporte Salida ${manifest.dept||''} — ${manifest.fecha||''} — Seal: ${manifest.seal||''}`);
+  const body    = encodeURIComponent(
+    `Reporte de Salida IDEA Scan 2.0\n\n`+
+    `Departamento: ${manifest.dept||'—'}\nFecha: ${manifest.fecha||'—'}\n`+
+    `Área: ${manifest.area||'—'} | Truck: ${manifest.truck||'—'} | Plates: ${manifest.plates||'—'}\n`+
+    `Seal: ${manifest.seal||'—'}\n\n`+
+    `IDENTIFICADOS (${found.length}):\n`+
+    found.map(e=>`  ✓ ${e.sku} — ${e.bultos} bulto(s)`).join('\n')+
+    (missing.length ? `\n\nPENDIENTES (${missing.length}):\n`+missing.map(e=>`  ⚠️ ${e.sku} — ${e.bultos} bulto(s)`).join('\n') : '\n\n✅ Todos los entries identificados.')+
+    `\n\nOperador: ${USER.nombre||USER.username||'—'}\nGenerado por IDEA Scan 2.0`
+  );
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  showToast('📧 Abriendo cliente de correo...','info');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BORRADORES — Save / Load / Delete manifests
+// ═══════════════════════════════════════════════════════════
+let currentDraftId = null;   // ID of the borrador being edited
+
+async function loadBorradores() {
+  const list = document.getElementById('borradoresList');
+  const countEl = document.getElementById('borradoresCount');
+  if (!list) return;
+
+  list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-300);font-size:12px;">⏳ Cargando...</div>`;
+  try {
+    let q = db.schema('ideascan').from('salidas_borradores')
+      .select('id,folio,dept,fecha_doc,area,seal,entries,estado,created_at,updated_at')
+      .neq('estado','completado')
+      .order('updated_at', { ascending: false })
+      .limit(20);
+    if (USER.cliente_id) q = q.eq('cliente_id', USER.cliente_id);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const items = data || [];
+    countEl.textContent = items.length;
+
+    if (!items.length) {
+      list.innerHTML = `<div style="padding:28px;text-align:center;color:var(--text-300);">
+        <div style="font-size:28px;margin-bottom:8px;">📂</div>
+        <div style="font-size:12px;">No hay manifiestos guardados</div>
+        <div style="font-size:11px;margin-top:4px;">Carga un Excel o fotografía el documento y guarda el manifiesto para retomarlo después</div>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(b => {
+      const entries = b.entries || [];
+      const found   = entries.filter(e=>e.found).length;
+      const total   = entries.length;
+      const pct     = total ? Math.round(found/total*100) : 0;
+      const stateIcon = { pendiente:'⏳', en_proceso:'🔄' }[b.estado] || '📋';
+      const fecha = b.fecha_doc || fmtDate(b.created_at);
+      return `<div class="borrador-item">
+        <div class="borrador-icon ${b.estado}">${stateIcon}</div>
+        <div class="borrador-info">
+          <div class="borrador-folio">${b.folio}</div>
+          <div class="borrador-meta">
+            ${b.dept||''}${b.dept&&b.area?' · ':''}${b.area||''} · ${total} entries · ${fecha}
+            ${b.seal ? ` · Seal: ${b.seal}` : ''}
+          </div>
+          <div class="borrador-progress">
+            <div class="borrador-progress-fill" style="width:${pct}%"></div>
+          </div>
+          <div style="font-size:9px;color:var(--text-300);margin-top:2px;">${found}/${total} identificados (${pct}%)</div>
+        </div>
+        <div class="borrador-actions">
+          <button class="borrador-btn open" onclick="event.stopPropagation();openDraft('${b.id}')">
+            ${b.estado==='en_proceso'?'▶ Continuar':'▶ Abrir'}
+          </button>
+          <button class="borrador-btn del" onclick="event.stopPropagation();deleteDraft('${b.id}','${b.folio}')">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    console.error('[BORRADORES] load error:', e);
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:#dc2626;font-size:12px;">Error al cargar: ${e.message}</div>`;
+  }
+}
+
+async function saveManifestDraft() {
+  if (!manifest) return;
+  const btn = document.getElementById('saveDraftBtn');
+  btn.textContent = '⏳ Guardando...';
+  btn.disabled = true;
+
+  try {
+    const now = new Date().toISOString();
+    // Determine estado
+    const found = manifest.entries.filter(e=>e.found).length;
+    const estado = found > 0 ? 'en_proceso' : 'pendiente';
+    const folio  = manifest._folio || `SAL-${manifest.seal||manifest.area||'OUT'}-${now.slice(0,10)}`;
+
+    const payload = {
+      folio,
+      dept:       manifest.dept       || null,
+      fecha_doc:  manifest.fecha      || null,
+      area:       manifest.area       || null,
+      truck:      manifest.truck      || null,
+      plates:     manifest.plates     || null,
+      seal:       manifest.seal       || null,
+      entries:    manifest.entries,
+      estado,
+      cliente_id: USER.cliente_id     || null,
+      almacen_id: USER.almacen_id     || null,
+      operador_id: USER.id,
+      updated_at: now,
+    };
+
+    let result;
+    if (currentDraftId) {
+      // Update existing
+      result = await db.schema('ideascan').from('salidas_borradores')
+        .update(payload)
+        .eq('id', currentDraftId);
+    } else {
+      // Insert new
+      result = await db.schema('ideascan').from('salidas_borradores')
+        .insert(payload)
+        .select('id')
+        .single();
+      if (result.data?.id) {
+        currentDraftId = result.data.id;
+        manifest._folio = folio;
+      }
+    }
+
+    if (result.error) throw result.error;
+    showToast('💾 Manifiesto guardado — puedes continuar después', 'success', 4000);
+    btn.textContent = '✅ Guardado';
+    setTimeout(() => { btn.textContent = '💾 Guardar'; btn.disabled = false; }, 2500);
+  } catch(e) {
+    console.error('[SAVE DRAFT]', e);
+    showToast('Error al guardar: ' + e.message, 'error');
+    btn.textContent = '💾 Guardar';
+    btn.disabled = false;
+  }
+}
+
+async function openDraft(id) {
+  showAI('📂 Cargando manifiesto...', 'Restaurando entries guardados');
+  try {
+    const { data, error } = await db.schema('ideascan').from('salidas_borradores')
+      .select('*').eq('id', id).single();
+    if (error) throw error;
+
+    currentDraftId = id;
+    const restored = {
+      dept:    data.dept    || '',
+      fecha:   data.fecha_doc || '',
+      area:    data.area    || '',
+      truck:   data.truck   || '',
+      plates:  data.plates  || '',
+      seal:    data.seal    || '',
+      entries: (data.entries || []).map(e => ({
+        sku:           e.sku,
+        bultos:        e.bultos   || 1,
+        found:         e.found    || false,
+        scannedBultos: e.scannedBultos || 0,
+      })),
+      _folio:  data.folio,
+    };
+
+    // Update estado to en_proceso
+    await db.schema('ideascan').from('salidas_borradores')
+      .update({ estado: 'en_proceso', updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    loadManifest(restored);
+    showToast(`✅ Manifiesto restaurado — ${restored.entries.length} entries`, 'success', 3000);
+  } catch(e) {
+    console.error('[OPEN DRAFT]', e);
+    showToast('Error al abrir: ' + e.message, 'error');
+  } finally { hideAI(); }
+}
+
+async function deleteDraft(id, folio) {
+  if (!confirm(`¿Eliminar el manifiesto "${folio}"?`)) return;
+  try {
+    const { error } = await db.schema('ideascan').from('salidas_borradores')
+      .delete().eq('id', id);
+    if (error) throw error;
+    showToast('🗑 Manifiesto eliminado', 'info');
+    loadBorradores();
+  } catch(e) {
+    showToast('Error al eliminar: ' + e.message, 'error');
+  }
+}
+
+// Auto-save draft every 60 seconds if manifest is loaded
+setInterval(async () => {
+  if (manifest && currentDraftId) {
+    const payload = {
+      entries:    manifest.entries,
+      estado:     manifest.entries.filter(e=>e.found).length > 0 ? 'en_proceso' : 'pendiente',
+      updated_at: new Date().toISOString(),
+    };
+    await db.schema('ideascan').from('salidas_borradores')
+      .update(payload).eq('id', currentDraftId)
+      .catch(e => console.warn('[AUTOSAVE]', e));
+  }
+}, 60000);
+
+// ═══════════════════════════════════════════════════════════
+//  PHASE 5 — DISPATCH CONFIRMATION (Segunda Confirmación)
+// ═══════════════════════════════════════════════════════════
+let dispatchPhotos  = { 1: null, 2: null };  // dataUrl
+let dispatchStreams = { 1: null, 2: null };
+let dispatchDraftId = null;  // id of the borrador being dispatched
+
+// Entry point: called from Phase 4 "Completar Despacho" button
+function startDispatchConfirmation() {
+  if (!manifest) return;
+  dispatchDraftId = currentDraftId;
+  _openDispatchPhase();
+}
+
+// Entry point: called from inventario.html via URL param ?dispatch=<id>
+async function checkDispatchParam() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('dispatch');
+  if (!id) return;
+  await openDispatchById(id);
+}
+
+async function openDispatchById(id) {
+  showAI('📂 Cargando orden...', 'Preparando confirmación de despacho');
+  try {
+    const { data, error } = await db.schema('ideascan').from('salidas_borradores')
+      .select('*').eq('id', id).single();
+    if (error) throw error;
+    if (!['primera_confirmacion','en_proceso','pendiente'].includes(data.estado)) {
+      showToast('Esta salida ya fue completada', 'warning'); hideAI(); return;
+    }
+    currentDraftId  = id;
+    dispatchDraftId = id;
+    manifest = {
+      dept:    data.dept    || '',
+      fecha:   data.fecha_doc || '',
+      area:    data.area    || '',
+      truck:   data.truck   || '',
+      plates:  data.plates  || '',
+      seal:    data.seal    || '',
+      entries: data.entries || [],
+      _folio:  data.folio,
+    };
+    _openDispatchPhase();
+  } catch(e) {
+    showToast('Error al cargar la orden: '+e.message, 'error');
+  } finally { hideAI(); }
+}
+
+function _openDispatchPhase() {
+  // Hide all phases, show phase 5
+  document.getElementById('phase1').style.display  = 'none';
+  document.getElementById('phase23').style.display = 'none';
+  document.getElementById('phase4').style.display  = 'none';
+  document.getElementById('phase5').style.display  = '';
+  setPhase(5);
+
+  // Fill header info
+  const seal = manifest.seal || '—';
+  document.getElementById('dispatchSealExpected').textContent = seal;
+  document.getElementById('dispatchOrderInfo').textContent =
+    `${manifest._folio||manifest.dept||'Salida'} · ${manifest.entries?.length||0} entries · ${manifest.fecha||''}`;
+
+  // Reset dispatch state
+  dispatchPhotos = { 1: null, 2: null };
+  document.getElementById('processDispatchBtn').disabled = true;
+  document.getElementById('dispatchAIResult').style.display = 'none';
+  clearDispatchPhoto(1, true);
+  clearDispatchPhoto(2, true);
+
+  // Start cameras
+  startDispatchCamera(1);
+  startDispatchCamera(2);
+}
+
+async function startDispatchCamera(n) {
+  const videoId = 'dispatchV'+n;
+  const statusId = 'dp'+n+'status';
+  const btnId = 'dp'+n+'captureBtn';
+  try {
+    // Stop previous stream if any
+    if (dispatchStreams[n]) { dispatchStreams[n].getTracks().forEach(t=>t.stop()); }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 } }, audio:false
+    });
+    dispatchStreams[n] = stream;
+    const v = document.getElementById(videoId);
+    v.srcObject = stream; await v.play();
+    document.getElementById(statusId).textContent = '✅ Listo — toca Capturar';
+    document.getElementById(btnId).disabled = false;
+  } catch {
+    document.getElementById(statusId).textContent = '📁 Sin cámara — sube imagen';
+  }
+}
+
+function captureDispatch(n) {
+  const v = document.getElementById('dispatchV'+n);
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth||1280; c.height = v.videoHeight||960;
+  c.getContext('2d').drawImage(v,0,0);
+  setDispatchPhoto(n, c.toDataURL('image/jpeg',0.88));
+}
+
+function uploadDispatch(n, input) {
+  const f = input.files?.[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => setDispatchPhoto(n, e.target.result);
+  r.readAsDataURL(f);
+  input.value='';
+}
+
+function setDispatchPhoto(n, dataUrl) {
+  dispatchPhotos[n] = dataUrl;
+  // Show preview
+  document.getElementById('dispatch_p'+n+'_cam').style.display = 'none';
+  document.getElementById('dispatch_p'+n+'_preview').style.display = '';
+  document.getElementById('dispatch_p'+n+'_img').src = dataUrl;
+  // Update badge
+  const badge = document.getElementById('p'+n+'badge');
+  badge.textContent = '✅ Capturada';
+  badge.style.background = 'rgba(34,199,122,.15)';
+  badge.style.color = '#15803d';
+  // Stop camera stream
+  if (dispatchStreams[n]) { dispatchStreams[n].getTracks().forEach(t=>t.stop()); dispatchStreams[n]=null; }
+  // Enable process button when both photos are ready
+  if (dispatchPhotos[1] && dispatchPhotos[2]) {
+    document.getElementById('processDispatchBtn').disabled = false;
+    showScanToast('✅ Ambas fotos listas — toca Verificar', 'green');
+  }
+}
+
+function clearDispatchPhoto(n, silent=false) {
+  dispatchPhotos[n] = null;
+  document.getElementById('dispatch_p'+n+'_cam').style.display = '';
+  document.getElementById('dispatch_p'+n+'_preview').style.display = 'none';
+  document.getElementById('dispatch_p'+n+'_img').src = '';
+  const badge = document.getElementById('p'+n+'badge');
+  if (badge) { badge.textContent='Pendiente'; badge.style.background='rgba(245,158,11,.2)'; badge.style.color='#d97706'; }
+  document.getElementById('processDispatchBtn').disabled = true;
+  document.getElementById('dispatchAIResult').style.display = 'none';
+  if (!silent) startDispatchCamera(n);
+}
+
+async function processDispatch() {
+  if (!dispatchPhotos[1] || !dispatchPhotos[2]) {
+    showToast('Necesitas ambas fotos para continuar','warning'); return;
+  }
+
+  const btn = document.getElementById('processDispatchBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verificando sello con AI...';
+
+  const sealExpected = (manifest.seal||'').trim().toUpperCase();
+
+  showAI('🔒 Verificando Sello...', `Sello esperado: ${sealExpected}`);
+
+  try {
+    // Only analyze photo 2 (the seal photo) for seal verification
+    const base64 = dispatchPhotos[2].split(',')[1];
+    const mime   = dispatchPhotos[2].split(';')[0].split(':')[1] || 'image/jpeg';
+
+    const prompt = `Eres un sistema WMS de control de despacho. Esta imagen muestra el número de sello/SEAL de un camión.
+
+Sello esperado según la orden: "${sealExpected}"
+
+Tu tarea:
+1. Lee el número de sello/SEAL visible en la imagen con precisión
+2. Compáralo con el sello esperado (ignora espacios, guiones y mayúsculas/minúsculas)
+3. Determina si coinciden
+
+Responde SOLO con JSON exacto sin markdown:
+{
+  "seal_detectado": "UL-7409902",
+  "seal_esperado": "${sealExpected}",
+  "coincide": true,
+  "confianza": 95,
+  "observaciones": "El sello es claramente visible y coincide exactamente"
+}`;
+
+    const raw    = await callVision(base64, mime, prompt);
+    const result = parseAIResult(raw);
+
+    hideAI();
+
+    const sealDetected = (result?.seal_detectado||'').trim().toUpperCase();
+    const coincide     = result?.coincide === true ||
+      sealDetected.replace(/[-\s]/g,'') === sealExpected.replace(/[-\s]/g,'');
+    const confianza    = result?.confianza || 0;
+
+    // Show result box
+    const resultBox = document.getElementById('dispatchAIResult');
+    const resultEl  = document.getElementById('sealVerifyResult');
+    resultBox.style.display = '';
+
+    if (coincide && confianza >= 70) {
+      resultBox.style.border = '1.5px solid rgba(34,199,122,.4)';
+      resultBox.style.background = 'rgba(34,199,122,.04)';
+      resultEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:28px;">✅</span>
+          <div>
+            <div style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:#15803d;">Sello verificado</div>
+            <div style="font-size:11px;color:var(--text-300);">Confianza: ${confianza}%</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:var(--surface);border-radius:8px;padding:10px;">
+            <div style="font-size:9px;color:var(--text-300);font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Esperado</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--navy);">${sealExpected}</div>
+          </div>
+          <div style="background:rgba(34,199,122,.08);border-radius:8px;padding:10px;">
+            <div style="font-size:9px;color:#15803d;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Detectado</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:#15803d;">${sealDetected}</div>
+          </div>
+        </div>
+        ${result?.observaciones ? `<div style="font-size:11px;color:var(--text-300);margin-top:8px;">💬 ${result.observaciones}</div>` : ''}`;
+
+      // Auto-confirm after brief delay
+      await new Promise(r=>setTimeout(r,1200));
+      await completeDispatch(sealDetected, confianza, result?.observaciones||'');
+
+    } else {
+      // Seal mismatch — show warning, let user decide
+      resultBox.style.border = '1.5px solid rgba(239,68,68,.4)';
+      resultBox.style.background = 'rgba(239,68,68,.04)';
+      resultEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:28px;">⚠️</span>
+          <div>
+            <div style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:#dc2626;">Sello NO coincide</div>
+            <div style="font-size:11px;color:var(--text-300);">Confianza: ${confianza}%</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="background:var(--surface);border-radius:8px;padding:10px;">
+            <div style="font-size:9px;color:var(--text-300);font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Esperado</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--navy);">${sealExpected}</div>
+          </div>
+          <div style="background:rgba(239,68,68,.08);border-radius:8px;padding:10px;">
+            <div style="font-size:9px;color:#dc2626;font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Detectado</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:#dc2626;">${sealDetected||'No legible'}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="clearDispatchPhoto(2)" style="flex:1;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-weight:700;font-size:12px;cursor:pointer;">🔄 Retomar foto</button>
+          <button onclick="completeDispatch('${sealDetected}',${confianza},'SELLO NO COINCIDIÓ — operador forzó confirmación')" 
+            style="flex:1;padding:10px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#dc2626;font-weight:700;font-size:12px;cursor:pointer;">
+            ⚠️ Forzar confirmación
+          </button>
+        </div>`;
+
+      btn.disabled = false;
+      btn.textContent = '🤖 Verificar Sello y Completar Despacho';
+      showScanToast('⚠️ Sello no coincide — retoma la foto o fuerza confirmación','cyan');
+    }
+
+  } catch(e) {
+    hideAI();
+    console.error('[DISPATCH AI]', e);
+    showToast('Error AI: '+e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '🤖 Verificar Sello y Completar Despacho';
+  }
+}
+
+// ── Upload a dataUrl photo to Supabase Storage ───────────────────────────
+async function uploadDispatchPhoto(dataUrl, path) {
+  // Convert base64 dataUrl to Blob
+  const res  = await fetch(dataUrl);
+  const blob = await res.blob();
+  const mime = blob.type || 'image/jpeg';
+
+  const { error } = await db.storage
+    .from('despacho-fotos')
+    .upload(path, blob, { contentType: mime, upsert: true });
+
+  if (error) throw new Error('Storage upload: ' + error.message);
+
+  // Build public URL
+  const { data: urlData } = db.storage
+    .from('despacho-fotos')
+    .getPublicUrl(path);
+
+  return urlData?.publicUrl || null;
+}
+
+async function completeDispatch(sealDetected, confianza, notas) {
+  showAI('📤 Subiendo fotos...', 'Guardando evidencia de despacho');
+  const now      = new Date().toISOString();
+  const folioKey = (manifest._folio || `SAL-${manifest.seal||'OUT'}-${now.slice(0,10)}`)
+    .replace(/[^a-zA-Z0-9_-]/g, '_');
+  const ts       = Date.now();
+
+  try {
+    // ── 1. Upload both photos to Supabase Storage ─────────────────────────
+    let urlCarga = null;
+    let urlSeal  = null;
+
+    if (dispatchPhotos[1]) {
+      document.getElementById('aiOlSub').textContent = 'Subiendo foto de carga...';
+      urlCarga = await uploadDispatchPhoto(
+        dispatchPhotos[1],
+        `${folioKey}/carga_${ts}.jpg`
+      );
+    }
+
+    if (dispatchPhotos[2]) {
+      document.getElementById('aiOlSub').textContent = 'Subiendo foto del sello...';
+      urlSeal = await uploadDispatchPhoto(
+        dispatchPhotos[2],
+        `${folioKey}/sello_${ts}.jpg`
+      );
+    }
+
+    document.getElementById('aiOlSub').textContent = 'Registrando confirmación...';
+
+    // ── 2. Build segunda_confirmacion object with real URLs ───────────────
+    const sealOk = (sealDetected||'').replace(/[-\s]/g,'').toUpperCase()
+                === (manifest.seal||'').replace(/[-\s]/g,'').toUpperCase();
+
+    const segunda = {
+      foto_carga_url:   urlCarga,
+      foto_seal_url:    urlSeal,
+      seal_detectado:   sealDetected,
+      seal_esperado:    manifest.seal,
+      seal_ok:          sealOk,
+      confianza,
+      operador_id:      USER.id,
+      operador_nombre:  USER.nombre || USER.username,
+      fecha:            now,
+      notas:            notas || '',
+    };
+
+    // ── 3. Update borrador → completado with photo URLs ───────────────────
+    const draftId = dispatchDraftId || currentDraftId;
+    if (draftId) {
+      const { error: draftErr } = await db.schema('ideascan').from('salidas_borradores').update({
+        estado:               'completado',
+        segunda_confirmacion: segunda,
+        fecha_segunda_conf:   now,
+        segunda_operador_id:  USER.id,
+        updated_at:           now,
+      }).eq('id', draftId);
+      if (draftErr) console.warn('[DRAFT COMPLETE]', draftErr);
+    }
+
+    // ── 4. Update movimientos → mark as dispatched with photo URLs ────────
+    const folio = manifest._folio || `SAL-${manifest.seal||'OUT'}-${now.slice(0,10)}`;
+    await db.schema('ideascan').from('movimientos').update({
+      notas: `DESPACHADO ✅ | Seal: ${sealDetected} | ${sealOk?'OK':'⚠️ NO COINCIDIÓ'} | Conf: ${confianza}% | ${notas||''}`,
+      referencia: urlCarga || null,   // store primary photo URL in referencia for quick access
+    }).eq('folio', folio).eq('tipo','salida').catch(e=>console.warn(e));
+
+    // ── 5. Ensure inventario entries are salida_total ─────────────────────
+    for (const e of (manifest.entries||[]).filter(e=>e.found)) {
+      await db.schema('ideascan').from('inventario').update({
+        estado: 'salida_total', updated_at: now
+      }).eq('sku', e.sku).catch(()=>{});
+    }
+
+    hideAI();
+    showDispatchSuccess(sealDetected, sealOk, urlCarga, urlSeal);
+
+  } catch(err) {
+    hideAI();
+    console.error('[COMPLETE DISPATCH]', err);
+    showToast('Error al completar: '+err.message, 'error');
+    document.getElementById('processDispatchBtn').disabled = false;
+    document.getElementById('processDispatchBtn').textContent = '🤖 Verificar Sello y Completar Despacho';
+  }
+}
+
+function showDispatchSuccess(sealDetected, sealOk, urlCarga, urlSeal) {
+  const photoHtml = (urlCarga || urlSeal) ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      ${urlCarga ? `
+        <div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;">
+          <img src="${urlCarga}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;"
+               onclick="window.open('${urlCarga}','_blank')" style="cursor:pointer;">
+          <div style="padding:6px 10px;font-size:10px;font-weight:700;color:var(--text-300);">📦 Material cargado</div>
+        </div>` : ''}
+      ${urlSeal ? `
+        <div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;">
+          <img src="${urlSeal}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:pointer;"
+               onclick="window.open('${urlSeal}','_blank')">
+          <div style="padding:6px 10px;font-size:10px;font-weight:700;color:var(--text-300);">🔒 Sello verificado</div>
+        </div>` : ''}
+    </div>` : '';
+
+  document.getElementById('phase5').innerHTML = `
+    <div style="max-width:520px;margin:0 auto;padding:24px 4px 40px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:64px;margin-bottom:12px;">${sealOk?'🚛':'⚠️'}</div>
+        <div style="font-family:'Exo 2',sans-serif;font-size:22px;font-weight:900;color:var(--navy);margin-bottom:6px;">
+          ${sealOk ? '¡Despacho confirmado!' : 'Despacho registrado'}
+        </div>
+        <div style="font-size:12px;color:var(--text-300);">
+          ${manifest._folio || manifest.dept || 'Salida'} · ${manifest.entries?.filter(e=>e.found).length||0} entries
+        </div>
+      </div>
+
+      <!-- Seal comparison -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:white;border-radius:12px;border:1px solid var(--border);padding:14px;">
+          <div style="font-size:9px;color:var(--text-300);font-weight:700;text-transform:uppercase;letter-spacing:.8px;">Seal esperado</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:var(--navy);margin-top:4px;">${manifest.seal||'—'}</div>
+        </div>
+        <div style="background:${sealOk?'rgba(34,199,122,.08)':'rgba(239,68,68,.06)'};border-radius:12px;border:1px solid ${sealOk?'rgba(34,199,122,.3)':'rgba(239,68,68,.3)'};padding:14px;">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${sealOk?'#15803d':'#dc2626'};">Seal detectado</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:${sealOk?'#15803d':'#dc2626'};margin-top:4px;">${sealDetected||'—'}</div>
+        </div>
+      </div>
+
+      <!-- Evidence photos -->
+      ${photoHtml}
+
+      ${(urlCarga||urlSeal) ? `
+      <div style="background:rgba(13,43,122,.04);border:1px solid rgba(13,43,122,.1);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-300);">
+        📁 Fotos guardadas en Supabase Storage · Toca para ampliar
+      </div>` : ''}
+
+      <button onclick="resetAll()" class="btn-confirm">
+        🔄 Nueva salida
+      </button>
+    </div>`;
+  setPhase(5);
+  showScanToast(sealOk ? '🎉 Despacho completado — fotos guardadas' : '⚠️ Registrado con advertencia', sealOk?'green':'');
+}
+
+function goBackToPhase4() {
+  // Stop dispatch cameras
+  [1,2].forEach(n => {
+    if (dispatchStreams[n]) { dispatchStreams[n].getTracks().forEach(t=>t.stop()); dispatchStreams[n]=null; }
+  });
+  document.getElementById('phase5').style.display = 'none';
+  document.getElementById('phase4').style.display = '';
+  setPhase(4);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════════
+function resetAll() {
+  manifest         = null;
+  scanPhotos       = [];
+  currentDraftId   = null;
+  dispatchDraftId  = null;
+  dispatchPhotos   = { 1: null, 2: null };
+  [1,2].forEach(n => {
+    if (dispatchStreams[n]) { dispatchStreams[n].getTracks().forEach(t=>t.stop()); dispatchStreams[n]=null; }
+  });
+  if (scanStream) { scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+
+  document.getElementById('phase1').style.display  = '';
+  document.getElementById('phase23').style.display = 'none';
+  document.getElementById('phase4').style.display  = 'none';
+  document.getElementById('phase5').style.display  = 'none';
+  setTimeout(loadBorradores, 200);  // Refresh list after reset
+  document.getElementById('areaBadge').style.display = 'none';
+  document.getElementById('photoStrip').innerHTML  = '';
+  document.getElementById('scanAIBtn').disabled    = true;
+  document.getElementById('scanCaptureBtn').disabled=true;
+  document.getElementById('confirmSection').style.display='none';
+  document.getElementById('scanBadge').textContent = '0 fotos';
+  document.getElementById('scanPhotoCount').textContent = '0';
+  document.getElementById('scanCamBadge').style.display = 'none';
+  setPhase(1);
+  startManifestCamera();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCAN TOAST (top center)
+// ═══════════════════════════════════════════════════════════
+let toastTimer = null;
+function showScanToast(msg, type='') {
+  const el = document.getElementById('scanToast');
+  el.textContent = msg;
+  el.className   = 'scan-toast show' + (type?' '+type:'');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 3500);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AI OVERLAY HELPERS
+// ═══════════════════════════════════════════════════════════
+function showAI(title, sub) {
+  document.getElementById('aiOlText').textContent  = title;
+  document.getElementById('aiOlSub').textContent   = sub;
+  document.getElementById('aiFoundChips').innerHTML = '';
+  document.getElementById('aiOverlay').classList.add('open');
+}
+function hideAI() {
+  document.getElementById('aiOverlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PREVIEW PHOTO (click thumbnail)
+// ═══════════════════════════════════════════════════════════
+function previewPhoto(i) {
+  const p = scanPhotos[i];
+  if (!p) return;
+  const w = window.open('','_blank','width=800,height=700');
+  const tags = (p.positions||[]).map(pos =>
+    `<div style="position:absolute;left:${pos.posicion?.x||0}%;top:${pos.posicion?.y||0}%;
+      transform:translate(-50%,-50%);background:rgba(34,199,122,.9);color:white;
+      font-family:monospace;font-size:11px;font-weight:700;padding:3px 8px;
+      border-radius:4px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);">
+      ${pos.sku}
+    </div>`
+  ).join('');
+  w.document.write(`<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+    <div style="position:relative;display:inline-block;">
+      <img src="${p.dataUrl}" style="max-width:100%;max-height:90vh;display:block;">
+      <div style="position:absolute;inset:0;">${tags}</div>
+    </div>
+  </body></html>`);
+  w.document.close();
+}
+</script>
+</body>
+</html>
