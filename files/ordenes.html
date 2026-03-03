@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Órdenes de Salida</title>
+<link rel="icon" href="src/assets/favicon16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="src/assets/appletouchicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d2b7a">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<!-- Styles -->
+<link rel="stylesheet" href="src/css/base.css">
+<link rel="stylesheet" href="src/css/layout.css">
+<link rel="stylesheet" href="src/css/components.css">
+<link rel="stylesheet" href="src/css/utilities.css">
+<link rel="stylesheet" href="src/css/pages/ordenes.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+
+    <!-- Header -->
+    <div class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">Órdenes <span>de Salida</span></div>
+      <div class="header-actions">
+        <button class="header-btn" id="newOrderBtn" onclick="openNewOrderModal()" title="Nueva orden">➕</button>
+        <button class="header-btn" id="alertBtn" onclick="location.href='inventario.html'" title="Inventario">
+          🔔<span class="badge" id="pendingCount" style="display:none">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card inv">
+          <div class="kpi-label">📋 Órdenes del Mes</div>
+          <div class="kpi-value" id="kpiMes">—</div>
+          <div class="kpi-sub">Total del mes</div>
+        </div>
+        <div class="kpi-card entrada">
+          <div class="kpi-label">📅 Órdenes Hoy</div>
+          <div class="kpi-value" id="kpiHoy">—</div>
+          <div class="kpi-sub">Creadas hoy</div>
+        </div>
+        <div class="kpi-card sal">
+          <div class="kpi-label">⏳ Pendientes</div>
+          <div class="kpi-value" id="kpiPend">—</div>
+          <div class="kpi-sub">Por realizar</div>
+        </div>
+        <div class="kpi-card pkg">
+          <div class="kpi-label">✅ Completadas</div>
+          <div class="kpi-value" id="kpiComp">—</div>
+          <div class="kpi-sub">Este mes</div>
+        </div>
+      </div>
+
+      <!-- Status filters -->
+      <div class="chip-row">
+        <div class="chip active" onclick="setFilter('all',this)">Todas</div>
+        <div class="chip" onclick="setFilter('pendiente',this)">⏳ Pendientes</div>
+        <div class="chip" onclick="setFilter('proceso',this)">🔄 En proceso</div>
+        <div class="chip" onclick="setFilter('completada',this)">✅ Completadas</div>
+      </div>
+
+      <!-- Orders list (rendered by ordenes.js) -->
+      <div id="ordersList">
+        <div style="text-align:center;padding:30px;color:var(--text-300);">⏳ Cargando órdenes...</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Nueva Orden ══ -->
+<div class="modal-overlay" id="newOrderModal" onclick="if(event.target===this)closeNewOrderModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-icon" style="background:rgba(239,68,68,.1)">📋</div>
+      <div>
+        <div class="modal-title">Nueva Orden de Salida</div>
+        <div class="modal-sub">Carga el Excel del cliente con los SKUs a dar salida</div>
+      </div>
+      <button class="modal-close" onclick="closeNewOrderModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Cliente <span class="req">*</span></label>
+          <select class="form-select" id="noCliente"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referencia del cliente</label>
+          <input class="form-input" id="noRef" placeholder="Ej. REQ-2026-001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Transporte</label>
+          <input class="form-input" id="noTransporte" placeholder="Nombre del transporte">
+        </div>
+        <div class="form-group">
+          <label class="form-label">N° de Orden del cliente</label>
+          <input class="form-input" id="noNumOrden" placeholder="Ej. PO-12345">
+        </div>
+      </div>
+
+      <!-- Excel drop zone -->
+      <div style="background:rgba(239,68,68,.04);border:1.5px solid rgba(239,68,68,.2);border-radius:12px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:800;color:var(--sal-color);margin-bottom:4px;">📊 Excel de Salida</div>
+        <div style="font-size:10px;color:var(--text-300);margin-bottom:10px;">
+          Columnas requeridas: <strong>SKU</strong> + <strong>Cantidad</strong> (el sistema detecta automáticamente)
+        </div>
+        <div class="drop-zone" id="salDropZone"
+          onclick="document.getElementById('salFile').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="event.preventDefault();this.classList.remove('drag-over');handleSalExcel(event.dataTransfer.files[0])">
+          <input type="file" id="salFile" accept=".xlsx,.xls,.csv" style="display:none"
+            onchange="handleSalExcel(this.files[0])">
+          <div style="font-size:26px;margin-bottom:6px;">📂</div>
+          <div style="font-size:13px;font-weight:700;color:var(--sal-color);">Arrastra el Excel aquí o haz clic</div>
+          <div style="font-size:11px;color:var(--text-300);margin-top:2px;">.xlsx · .xls · .csv</div>
+        </div>
+      </div>
+
+      <!-- SKU preview table -->
+      <div id="salPreview" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-300);">SKUs a dar salida</div>
+          <span id="salSkuCount" style="font-size:11px;font-weight:800;color:var(--sal-color);"></span>
+        </div>
+        <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+          <table class="data-table" id="salSkuTable">
+            <thead>
+              <tr><th>SKU</th><th>Cantidad</th><th>Descripción</th><th style="width:30px;"></th></tr>
+            </thead>
+            <tbody id="salSkuBody"></tbody>
+          </table>
+        </div>
+        <button style="margin-top:8px;width:100%;padding:6px;border-radius:8px;border:1.5px dashed rgba(239,68,68,.3);background:rgba(239,68,68,.03);color:var(--sal-color);font-size:11px;font-weight:700;cursor:pointer;"
+          onclick="addManualSku()">＋ Agregar SKU manual</button>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label class="form-label">Notas / Instrucciones</label>
+        <input class="form-input" id="noNotas" placeholder="Observaciones adicionales...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeNewOrderModal()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" onclick="saveNewOrder()">✓ Crear Orden de Salida</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DRAWER: Order detail ══ -->
+<div class="drawer" id="orderDrawer" style="width:420px;">
+  <div class="drawer-header">
+    <div class="modal-icon" id="dIcon" style="background:rgba(239,68,68,.1);font-size:22px;">📋</div>
+    <div style="flex:1;min-width:0;margin-left:10px;">
+      <div class="modal-title" id="dFolio"></div>
+      <div class="modal-sub" id="dStatus"></div>
+    </div>
+    <button class="modal-close" onclick="closeOrderDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-footer" id="drawerFooter"></div>
+</div>
+<div class="sidebar-overlay" id="drawerOverlay" onclick="closeOrderDrawer()"></div>
+
+<!-- ══ AI VERIFICATION OVERLAY ══ -->
+<div class="ai-overlay" id="aiOverlay">
+  <!-- AI Overlay header -->
+  <div style="background:#0a1f5c;color:white;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div>
+      <div style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:900;">📸 Confirmar Orden — <span id="aiFolio"></span></div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px;">Toma foto de cada SKU para confirmar la salida</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="aiPct" style="font-size:13px;font-weight:900;color:var(--cyan);"></div>
+      <button onclick="closeAI()" style="background:rgba(255,255,255,.1);border:none;color:white;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;">✕</button>
+    </div>
+  </div>
+
+  <!-- AI Overlay body: 3-panel layout -->
+  <div class="ai-panel" style="flex:1;min-height:0;overflow:hidden;">
+
+    <!-- Panel 1: SKU list -->
+    <div class="ai-sku-panel" style="background:white;overflow-y:auto;border-right:1px solid #e4eaf8;">
+      <div style="padding:10px 12px;background:#f4f8ff;border-bottom:1px solid #e4eaf8;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6b83c4;">SKUs de la Orden</div>
+      <div id="aiSkuList" style="padding:8px;"></div>
+    </div>
+
+    <!-- Panel 2: Camera -->
+    <div class="ai-camera-panel">
+      <div style="position:relative;border-radius:12px;overflow:hidden;width:100%;max-width:480px;aspect-ratio:4/3;background:#111;flex-shrink:0;">
+        <video id="aiVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+        <div style="position:absolute;inset:0;pointer-events:none;">
+          <div style="position:absolute;top:10px;left:10px;width:28px;height:28px;border-top:3px solid var(--cyan);border-left:3px solid var(--cyan);border-radius:2px 0 0 0;"></div>
+          <div style="position:absolute;top:10px;right:10px;width:28px;height:28px;border-top:3px solid var(--cyan);border-right:3px solid var(--cyan);border-radius:0 2px 0 0;"></div>
+          <div style="position:absolute;bottom:10px;left:10px;width:28px;height:28px;border-bottom:3px solid var(--cyan);border-left:3px solid var(--cyan);border-radius:0 0 0 2px;"></div>
+          <div style="position:absolute;bottom:10px;right:10px;width:28px;height:28px;border-bottom:3px solid var(--cyan);border-right:3px solid var(--cyan);border-radius:0 0 2px 0;"></div>
+        </div>
+        <div id="aiScanline" style="position:absolute;left:10px;right:10px;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);display:none;animation:scanAI 2s ease-in-out infinite;top:30%;"></div>
+      </div>
+      <div id="aiStatus" style="font-size:12px;color:rgba(255,255,255,.6);text-align:center;min-height:18px;"></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;">
+        <button id="aiCaptureBtn" onclick="aiCapture()"
+          style="background:linear-gradient(135deg,var(--navy),#2d6ef5);color:white;border:none;padding:12px 28px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Exo 2',sans-serif;box-shadow:0 4px 20px rgba(45,110,245,.4);">
+          📸 Tomar Foto y Verificar
+        </button>
+        <label style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);padding:12px 16px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;">
+          📁 Subir Foto
+          <input type="file" accept="image/*" style="display:none" onchange="aiUploadPhoto(this.files[0])">
+        </label>
+      </div>
+      <canvas id="aiCanvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- Panel 3: AI Result -->
+    <div class="ai-result-panel" style="padding:14px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);margin-bottom:10px;">Resultado AI</div>
+      <div id="aiResult" style="color:rgba(255,255,255,.4);font-size:12px;text-align:center;padding-top:30px;">
+        <div style="font-size:30px;margin-bottom:8px;">🤖</div>
+        <div>Captura una foto para analizar</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Footer: progress -->
+  <div style="background:#0a1f5c;padding:10px 18px;flex-shrink:0;display:flex;align-items:center;gap:16px;">
+    <div style="flex:1;">
+      <div style="height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;">
+        <div id="aiProgressBar" style="height:100%;background:linear-gradient(90deg,var(--cyan),#2d6ef5);border-radius:3px;width:0%;transition:width .4s;"></div>
+      </div>
+      <div id="aiProgressLbl" style="font-size:10px;color:rgba(255,255,255,.35);margin-top:4px;"></div>
+    </div>
+    <button id="aiCompleteBtn" onclick="completeOrder()"
+      style="display:none;background:linear-gradient(135deg,#22c77a,#16a34a);color:white;border:none;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Exo 2',sans-serif;">
+      ✓ Completar Orden
+    </button>
+  </div>
+  <style>@keyframes scanAI{0%,100%{top:10%}50%{top:85%}}</style>
+</div>
+
+<div class="bottom-nav" id="bottomNav"></div>
+<div class="toast" id="globalToast"></div>
+
+<!-- Scripts -->
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/db.js"></script>
+<script src="src/js/core/utils.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script src="src/js/modules/camera.js"></script>
+<script src="src/js/modules/vision.js"></script>
+<script src="src/js/modules/export.js"></script>
+<script src="src/js/pages/ordenes.js"></script>
+
+</body>
+</html>
