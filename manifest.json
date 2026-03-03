@@ -1,0 +1,43 @@
+{
+  "name": "IDEA SCAN 2.0 — Warehouse Manager",
+  "short_name": "IDEA SCAN",
+  "description": "Sistema de gestión de almacén con AI Vision para CCA Group",
+  "start_url": "/login.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d2b7a",
+  "theme_color": "#0d2b7a",
+  "lang": "es-MX",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "icon192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Inventario",
+      "url": "/inventario.html",
+      "icons": [{ "src": "icon192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nueva Entrada AI",
+      "url": "/ai-entry.html",
+      "icons": [{ "src": "icon192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Salidas Scan",
+      "url": "/salidas.html",
+      "icons": [{ "src": "icon192.png", "sizes": "192x192" }]
+    }
+  ]
+}

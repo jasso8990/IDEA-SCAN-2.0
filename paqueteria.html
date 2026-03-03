@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <title>Paquetería — IDEA SCAN 2.0</title>
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/utilities.css">
+  <link rel="stylesheet" href="src/css/pages/paqueteria.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="src/js/core/config.js"></script>
+  <script src="src/js/core/auth.js"></script>
+  <script src="src/js/core/db.js"></script>
+  <script src="src/js/core/utils.js"></script>
+  <script src="src/js/core/nav.js"></script>
+  <script src="src/js/modules/export.js"></script>
+</head>
+<body>
+
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+<aside id="sidebar" class="sidebar"></aside>
+
+<div class="app-layout">
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header class="page-header">
+    <div class="header-left">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="page-title-wrap">
+        <h1 class="page-title">📦 Paquetería</h1>
+        <span class="page-sub" id="tableCount">—</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-ghost btn-sm" onclick="loadPaqueteria()" title="Actualizar">🔄</button>
+      <button class="btn btn-ghost btn-sm" id="downloadBtn" style="display:none" onclick="exportPaqueteria()">📥 Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="openNewModal()">+ Registrar</button>
+    </div>
+  </header>
+
+  <!-- ── KPIs ─────────────────────────────────────────────── -->
+  <section class="kpi-row">
+    <div class="kpi-card clickable" onclick="filterByKPI('hoy')">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpiTotal">—</div>
+        <div class="kpi-label">Recibidos Hoy</div>
+      </div>
+    </div>
+    <div class="kpi-card clickable" onclick="filterByKPI('pendiente')">
+      <div class="kpi-icon">⏳</div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpiPendiente">—</div>
+        <div class="kpi-label">Pendientes</div>
+      </div>
+    </div>
+    <div class="kpi-card clickable" onclick="filterByKPI('entregado')">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpiEntregado">—</div>
+        <div class="kpi-label">Entregados</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🗓️</div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpiSemana">—</div>
+        <div class="kpi-label">Esta Semana</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Filtros ───────────────────────────────────────────── -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" class="search-input" placeholder="Tracking, destinatario, carrier…" oninput="filterPaqueteria(this.value)">
+      <button id="searchClear" class="search-clear" onclick="clearSearch()" style="display:none">✕</button>
+    </div>
+    <div class="filter-tabs">
+      <button class="tab tab-active" data-status="all"       onclick="setStatusTab('all',this)">Todos</button>
+      <button class="tab"            data-status="recibido"  onclick="setStatusTab('recibido',this)">Recibidos</button>
+      <button class="tab"            data-status="pendiente" onclick="setStatusTab('pendiente',this)">Pendientes</button>
+      <button class="tab"            data-status="entregado" onclick="setStatusTab('entregado',this)">Entregados</button>
+    </div>
+  </div>
+
+  <!-- ── Tabla desktop ─────────────────────────────────────── -->
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Tracking</th>
+          <th>Carrier</th>
+          <th>Destinatario</th>
+          <th>Descripción</th>
+          <th>Bultos</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody id="pkgTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Cards móvil ───────────────────────────────────────── -->
+  <div class="cards-container" id="pkgCards"></div>
+
+</div><!-- /app-layout -->
+
+<nav id="bottomNav" class="bottom-nav"></nav>
+
+<!-- ════════════════════════════════════════
+     MODAL — Nuevo paquete
+════════════════════════════════════════ -->
+<div id="newModal" class="modal-overlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">📦 Registrar Paquete</div>
+      <button class="modal-close" onclick="closeNewModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Tracking Number *</label>
+          <input id="fTracking" class="form-input" placeholder="1Z999AA10123456784">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Carrier</label>
+          <select id="fCarrier" class="form-input">
+            <option value="">— Seleccionar —</option>
+            <option>FedEx</option><option>UPS</option><option>DHL</option>
+            <option>USPS</option><option>Estafeta</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Destinatario *</label>
+          <input id="fDestinatario" class="form-input" placeholder="Nombre de quien recibe">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Descripción</label>
+          <input id="fDesc" class="form-input" placeholder="Contenido del paquete">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bultos</label>
+          <input id="fBultos" class="form-input" type="number" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado inicial</label>
+          <select id="fEstado" class="form-input">
+            <option value="recibido">Recibido</option>
+            <option value="pendiente">Pendiente de entrega</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Notas</label>
+          <input id="fNotas" class="form-input" placeholder="Observaciones opcionales">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNewModal()">Cancelar</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="savePaquete()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     DRAWER — Detalle
+════════════════════════════════════════ -->
+<div id="drawerOverlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+<aside id="itemDrawer" class="drawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="dTracking">—</div>
+      <div id="dStatus"></div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body"   id="drawerBody"></div>
+  <div class="drawer-footer" id="drawerFooter"></div>
+</aside>
+
+<script src="src/js/pages/paqueteria.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
+</body>
+</html>

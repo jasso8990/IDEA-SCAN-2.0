@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Configuración</title>
+<link rel="icon" href="src/assets/favicon16.png" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="src/assets/appletouchicon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d2b7a">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Styles -->
+<link rel="stylesheet" href="src/css/base.css">
+<link rel="stylesheet" href="src/css/layout.css">
+<link rel="stylesheet" href="src/css/components.css">
+<link rel="stylesheet" href="src/css/utilities.css">
+<link rel="stylesheet" href="src/css/pages/config.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+
+    <!-- Header -->
+    <div class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">Configuración <span>WMS</span></div>
+    </div>
+
+    <div class="page-body">
+      <!-- Tabs -->
+      <div class="config-tabs">
+        <div class="config-tab active" data-tab="clientes"  onclick="switchTab('clientes',this)">🏢 Clientes</div>
+        <div class="config-tab"        data-tab="almacenes" onclick="switchTab('almacenes',this)">🏭 Almacenes</div>
+        <div class="config-tab"        data-tab="usuarios"  onclick="switchTab('usuarios',this)">👥 Usuarios</div>
+      </div>
+      <!-- Tab content rendered by config-admin.js -->
+      <div id="tabContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Cliente ══ -->
+<div class="modal-overlay" id="clientModal" onclick="if(event.target===this)closeClientModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-icon" id="cmIcon" style="background:rgba(13,43,122,.08)">🏢</div>
+      <div>
+        <div class="modal-title" id="cmTitle">Nuevo Cliente</div>
+        <div class="modal-sub">Configura los campos de captura AI para este cliente</div>
+      </div>
+      <button class="modal-close" onclick="closeClientModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="cmNombre" placeholder="Ej. Nordson Medical">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Código SKU <span class="req">*</span></label>
+          <input class="form-input mono" id="cmCodigo" placeholder="Ej. SAF" maxlength="6"
+            oninput="this.value=this.value.toUpperCase();updateSkuPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contacto</label>
+          <input class="form-input" id="cmContacto" placeholder="Nombre de contacto">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="cmEmail" type="email" placeholder="email@empresa.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="cmTel" placeholder="+52 (664) 000-0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">RFC</label>
+          <input class="form-input mono" id="cmRfc" placeholder="RFC">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Color del cliente</label>
+          <div class="color-opts" id="colorOpts">
+            <div class="color-opt selected" data-color="#2d6ef5" style="background:#2d6ef5" onclick="selectColor('#2d6ef5',this)"></div>
+            <div class="color-opt" data-color="#0d2b7a" style="background:#0d2b7a" onclick="selectColor('#0d2b7a',this)"></div>
+            <div class="color-opt" data-color="#00c2ff" style="background:#00c2ff" onclick="selectColor('#00c2ff',this)"></div>
+            <div class="color-opt" data-color="#22c77a" style="background:#22c77a" onclick="selectColor('#22c77a',this)"></div>
+            <div class="color-opt" data-color="#ef4444" style="background:#ef4444" onclick="selectColor('#ef4444',this)"></div>
+            <div class="color-opt" data-color="#f59e0b" style="background:#f59e0b" onclick="selectColor('#f59e0b',this)"></div>
+            <div class="color-opt" data-color="#8b5cf6" style="background:#8b5cf6" onclick="selectColor('#8b5cf6',this)"></div>
+            <div class="color-opt" data-color="#ec4899" style="background:#ec4899" onclick="selectColor('#ec4899',this)"></div>
+          </div>
+        </div>
+      </div>
+      <!-- SKU Preview -->
+      <div class="sku-preview-box">
+        <div style="font-size:10px;font-weight:700;color:var(--text-300);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Vista previa de SKU</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:900;color:var(--navy);" id="skuPreview">—</div>
+        <div style="font-size:10px;color:var(--text-300);margin-top:3px;">Formato: CÓDIGO + AAMMDD + ### · La secuencia reinicia cada mes</div>
+      </div>
+      <!-- AI Fields -->
+      <div style="background:rgba(13,43,122,.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:12px;font-weight:800;color:var(--navy);">🤖 Campos de Captura AI</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-xs" onclick="checkAll(true)">Seleccionar todos</button>
+            <button class="btn btn-ghost btn-xs" onclick="checkAll(false)">Limpiar</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-300);margin-bottom:10px;">Campos que la AI debe capturar al escanear una imagen</div>
+        <div class="field-checks" id="fieldChecks"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas internas</label>
+        <input class="form-input" id="cmNotas" placeholder="Observaciones sobre el cliente">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeClientModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="cmSaveBtn" onclick="saveClient()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Almacén ══ -->
+<div class="modal-overlay" id="warehouseModal" onclick="if(event.target===this)closeWarehouseModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-icon" id="wmIcon" style="background:rgba(13,43,122,.08)">🏭</div>
+      <div>
+        <div class="modal-title" id="wmTitle">Nuevo Almacén</div>
+        <div class="modal-sub">Registra un almacén en el sistema</div>
+      </div>
+      <button class="modal-close" onclick="closeWarehouseModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="wmNombre" placeholder="Ej. Almacén TJ Norte">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Código <span class="req">*</span></label>
+          <input class="form-input mono" id="wmCodigo" placeholder="Ej. TJN01" maxlength="8"
+            oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Dirección</label>
+          <input class="form-input" id="wmDir" placeholder="Calle, número, colonia, ciudad">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" id="wmTel" placeholder="+52 ...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Encargado</label>
+          <input class="form-input" id="wmEnc" placeholder="Nombre del encargado">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Superficie (m²)</label>
+          <input class="form-input" id="wmSup" type="number" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Capacidad (SKUs)</label>
+          <input class="form-input" id="wmCap" type="number" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeWarehouseModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="wmSaveBtn" onclick="saveWarehouse()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Usuario ══ -->
+<div class="modal-overlay" id="userModal" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-icon" id="umIcon" style="background:rgba(13,43,122,.08)">👤</div>
+      <div>
+        <div class="modal-title" id="umTitle">Nuevo Usuario</div>
+        <div class="modal-sub">El sistema asigna las credenciales automáticamente</div>
+      </div>
+      <button class="modal-close" onclick="closeUserModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" id="umNombre" placeholder="Nombre(s)" oninput="updateUsername()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido</label>
+          <input class="form-input" id="umApellido" placeholder="Apellidos" oninput="updateUsername()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Usuario (generado)</label>
+          <input class="form-input mono" id="umUsername" placeholder="Se genera automáticamente">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="umEmail" type="email" placeholder="usuario@empresa.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña temporal <span class="req">*</span></label>
+          <input class="form-input" id="umPassword" type="text" placeholder="Contraseña inicial">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol <span class="req">*</span></label>
+          <select class="form-select" id="umRol" onchange="toggleRolFields()">
+            <option value="">— Seleccionar rol —</option>
+            <option value="admin">👑 Administrador</option>
+            <option value="supervisor">🔷 Supervisor de Almacén</option>
+            <option value="cliente">🏢 Cliente</option>
+            <option value="operador">⚙️ Operador</option>
+          </select>
+        </div>
+        <div class="form-group" id="clienteField">
+          <label class="form-label">Cliente asignado</label>
+          <select class="form-select" id="umCliente"><option value="">— Sin cliente —</option></select>
+        </div>
+        <div class="form-group" id="almacenField">
+          <label class="form-label">Almacén asignado</label>
+          <select class="form-select" id="umAlmacen"><option value="">— Sin almacén —</option></select>
+        </div>
+      </div>
+      <div id="rolDesc" style="display:none;background:rgba(0,194,255,.06);border:1px solid rgba(0,194,255,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--text-700);margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeUserModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="umSaveBtn" onclick="saveUser()">Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Confirmar eliminación ══ -->
+<div class="modal-overlay" id="deleteModal" onclick="if(event.target===this)closeDelete()">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-icon" style="background:rgba(239,68,68,.1);">⚠️</div>
+      <div>
+        <div class="modal-title" id="delTitle">¿Eliminar?</div>
+        <div class="modal-sub" id="delSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeDelete()">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px;color:var(--text-700);">
+      Esta acción no puede deshacerse. El registro será desactivado del sistema.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeDelete()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="delConfirmBtn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav" id="bottomNav"></div>
+<div class="toast" id="globalToast"></div>
+
+<!-- Scripts -->
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/db.js"></script>
+<script src="src/js/core/utils.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script src="src/js/pages/config-admin.js"></script>
+
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
+</body>
+</html>
