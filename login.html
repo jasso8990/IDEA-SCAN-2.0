@@ -115,5 +115,9 @@
 <script src="src/js/core/config.js"></script>
 <script src="src/js/pages/login.js"></script>
 
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
 </body>
 </html>

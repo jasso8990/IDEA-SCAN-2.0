@@ -284,5 +284,9 @@
 <script src="src/js/modules/export.js"></script>
 <script src="src/js/pages/ai-entry.js"></script>
 
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
 </body>
 </html>

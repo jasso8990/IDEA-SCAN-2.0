@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — IDEA SCAN 2.0</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@900&family=Inter:wght@400;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0d2b7a 0%, #1a3fa8 50%, #00c2ff22 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 48px 40px;
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 24px 64px rgba(13,43,122,.3);
+    }
+    .emoji { font-size: 64px; margin-bottom: 16px; }
+    .code {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 72px;
+      font-weight: 900;
+      color: #0d2b7a;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #2d4080;
+      margin-bottom: 8px;
+    }
+    .sub {
+      font-size: 14px;
+      color: #94a8d0;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #0d2b7a;
+      color: white;
+      text-decoration: none;
+      padding: 12px 28px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      transition: background .2s;
+    }
+    .btn:hover { background: #1a3fa8; }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: #5870a8;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 14px;
+      margin-top: 12px;
+      transition: color .2s;
+    }
+    .btn-ghost:hover { color: #0d2b7a; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji">📦</div>
+    <div class="code">404</div>
+    <div class="title">Página no encontrada</div>
+    <div class="sub">La página que buscas no existe o fue movida.<br>Verifica la URL o regresa al inventario.</div>
+    <a href="inventario.html" class="btn">📦 Ir al Inventario</a>
+    <br>
+    <a href="login.html" class="btn-ghost">← Volver al Login</a>
+  </div>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
+</body>
+</html>

@@ -208,5 +208,9 @@
 <script src="src/js/modules/export.js"></script>
 <script src="src/js/pages/inventario.js"></script>
 
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
 </body>
 </html>

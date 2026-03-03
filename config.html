@@ -271,5 +271,9 @@
 <script src="src/js/core/nav.js"></script>
 <script src="src/js/pages/config-admin.js"></script>
 
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
 </body>
 </html>
