@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IDEA SCAN 2.0 — Iniciar Sesión</title>
+
+  <!-- PWA / Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/appletouchicon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IDEA Scan">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/pages/login.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     Background con cajas flotantes decorativas
+     ══════════════════════════════════════════════════ -->
+<div class="login-bg">
+  <div class="float-box"></div>
+  <div class="float-box"></div>
+  <div class="float-box"></div>
+  <div class="float-box"></div>
+
+  <!-- ── Card principal ── -->
+  <div class="login-card">
+
+    <!-- Header -->
+    <div class="login-header">
+      <div class="login-logo-wrap">📦</div>
+      <div class="login-app-name">IDEA <span>SCAN</span> 2.0</div>
+      <div class="login-company">CCA Group</div>
+    </div>
+
+    <!-- Body -->
+    <div class="login-body">
+      <div class="login-tagline">Warehouse Management System</div>
+
+      <!-- Mensaje de error -->
+      <div class="error-msg" id="errMsg">
+        <span>⚠️</span>
+        <span id="errText">Usuario o contraseña incorrectos</span>
+      </div>
+
+      <!-- Campo: Usuario -->
+      <div class="form-group">
+        <label class="form-label">Usuario</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">👤</span>
+          <input
+            type="text"
+            class="form-input"
+            id="username"
+            placeholder="Ingresa tu usuario"
+            autocomplete="username"
+            onkeydown="if(event.key==='Enter') document.getElementById('password').focus()"
+          >
+        </div>
+      </div>
+
+      <!-- Campo: Contraseña -->
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">🔒</span>
+          <input
+            type="password"
+            class="form-input"
+            id="password"
+            placeholder="Ingresa tu contraseña"
+            autocomplete="current-password"
+            onkeydown="if(event.key==='Enter') doLogin()"
+          >
+          <button class="input-toggle" id="togglePwd" onclick="togglePassword()">👁</button>
+        </div>
+      </div>
+
+      <!-- Botón de acceso -->
+      <button class="login-btn" id="loginBtn" onclick="doLogin()">
+        <span id="loginBtnText">Iniciar Sesión</span>
+      </button>
+
+      <div class="login-footer">
+        Sistema de gestión de almacén — Acceso restringido
+      </div>
+    </div>
+    <!-- /login-body -->
+
+  </div>
+  <!-- /login-card -->
+</div>
+<!-- /login-bg -->
+
+<!-- ═══════════════════════════════════════════════════
+     JS: config + lógica de login
+     Orden importante: config.js primero (define SUPA_URL, SUPA_KEY, SESSION_KEY)
+     ══════════════════════════════════════════════════ -->
+<script src="src/js/core/config.js"></script>
+<script src="src/js/pages/login.js"></script>
+
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
+</body>
+</html>
