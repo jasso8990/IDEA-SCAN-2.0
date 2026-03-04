@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entradas — IDEA SCAN 2.0</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon32.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/utilities.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <header class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="header-title">📥 <span>Entradas</span></div>
+      <div class="header-actions">
+        <button class="btn btn-primary btn-sm" onclick="openModalEntrada()">+ Nueva Entrada</button>
+      </div>
+    </header>
+
+    <div class="page-body">
+      <div class="search-bar mb-16">
+        <span>🔍</span>
+        <input type="text" id="searchInput" placeholder="Buscar folio, SKU, cliente..." oninput="filterEntradas()">
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Folio</th>
+              <th>Fecha</th>
+              <th>SKU</th>
+              <th>Descripción</th>
+              <th>Bultos</th>
+              <th>Cliente</th>
+              <th>Operador</th>
+            </tr>
+          </thead>
+          <tbody id="entradasBody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-300)">Cargando entradas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nueva Entrada -->
+<div class="modal-overlay" id="modalEntrada">
+  <div class="modal">
+    <div class="modal-header">
+      <span>📥</span>
+      <span class="modal-title">Nueva Entrada</span>
+      <button class="modal-close" onclick="closeModalEntrada()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">SKU <span class="req">*</span></label>
+        <input type="text" class="form-control" id="eSku" placeholder="Escanea o escribe el SKU" style="text-transform:uppercase">
+      </div>
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Bultos <span class="req">*</span></label>
+          <input type="number" class="form-control" id="eBultos" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-control" id="eFecha">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Referencia / Factura</label>
+        <input type="text" class="form-control" id="eRef" placeholder="Ej. FAC-2026-001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea class="form-control" id="eNotas" rows="2" placeholder="Observaciones opcionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModalEntrada()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEntrada()">Registrar Entrada</button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+<div class="toast" id="globalToast"></div>
+
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script src="src/js/pages/entradas.js"></script>
+<script>
+  const user = requireAuth();
+  if (user) {
+    renderSidebar('entradas');
+    renderBottomNav('entradas');
+    initEntradas();
+  }
+</script>
+</body>
+</html>

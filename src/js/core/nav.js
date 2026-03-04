@@ -44,7 +44,7 @@ function renderSidebar(currentPage) {
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">
         <img
-          src="assets/appletouchicon.png"
+          src="appletouchicon.png"
           alt="IDEA Scan"
           style="width:100%;height:100%;object-fit:cover;border-radius:10px;"
           onerror="this.parentElement.textContent='📦'"

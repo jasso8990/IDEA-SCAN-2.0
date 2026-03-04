@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración — IDEA SCAN 2.0</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon32.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/utilities.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <div class="main-content">
+    <header class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="header-title">⚙️ <span>Configuración</span></div>
+    </header>
+
+    <div class="page-body">
+
+      <!-- Tabs -->
+      <div class="chip-row mb-16">
+        <button class="chip active" onclick="showTab('usuarios',this)">👥 Usuarios</button>
+        <button class="chip" onclick="showTab('clientes',this)">🏢 Clientes</button>
+        <button class="chip" onclick="showTab('sistema',this)">⚙️ Sistema</button>
+      </div>
+
+      <!-- Tab: Usuarios -->
+      <div id="tab-usuarios">
+        <div class="card">
+          <div class="card-header">
+            <span>👥</span>
+            <span class="card-title">Usuarios del Sistema</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openModalUsuario()">+ Nuevo</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th></tr>
+              </thead>
+              <tbody id="usuariosBody">
+                <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-300)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Clientes -->
+      <div id="tab-clientes" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <span>🏢</span>
+            <span class="card-title">Clientes</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openModalCliente()">+ Nuevo</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Nombre</th><th>RFC</th><th>Contacto</th><th>Activo</th></tr>
+              </thead>
+              <tbody id="clientesBody">
+                <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-300)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Sistema -->
+      <div id="tab-sistema" style="display:none">
+        <div class="card">
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div>
+                <div class="form-label">Versión</div>
+                <div class="font-mono" style="font-size:18px;font-weight:700;color:var(--navy)">IDEA SCAN 2.0</div>
+              </div>
+              <div>
+                <div class="form-label">Empresa</div>
+                <div style="font-weight:600;color:var(--text-700)">CCA Group</div>
+              </div>
+              <div class="divider"></div>
+              <button class="btn btn-danger" onclick="logout()">⇥ Cerrar Sesión</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Usuario -->
+<div class="modal-overlay" id="modalUsuario">
+  <div class="modal">
+    <div class="modal-header">
+      <span>👤</span>
+      <span class="modal-title">Nuevo Usuario</span>
+      <button class="modal-close" onclick="closeModalUsuario()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre completo</label>
+        <input type="text" class="form-control" id="uNombre">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Usuario (login)</label>
+        <input type="text" class="form-control" id="uUsername" style="text-transform:lowercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="uPassword">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rol</label>
+        <select class="form-control" id="uRol">
+          <option value="operador">Operador</option>
+          <option value="gerente">Gerente</option>
+          <option value="admin">Administrador</option>
+          <option value="cliente">Cliente</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModalUsuario()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Cliente -->
+<div class="modal-overlay" id="modalCliente">
+  <div class="modal">
+    <div class="modal-header">
+      <span>🏢</span>
+      <span class="modal-title">Nuevo Cliente</span>
+      <button class="modal-close" onclick="closeModalCliente()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre <span class="req">*</span></label>
+        <input type="text" class="form-control" id="cNombre">
+      </div>
+      <div class="form-group">
+        <label class="form-label">RFC</label>
+        <input type="text" class="form-control" id="cRfc" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contacto</label>
+        <input type="text" class="form-control" id="cContacto">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" class="form-control" id="cTel">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModalCliente()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottomNav"></nav>
+<div class="toast" id="globalToast"></div>
+
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script src="src/js/pages/config.js"></script>
+<script>
+  const user = requireAuth();
+  if (user) {
+    if (user.rol !== 'admin') { window.location.replace('dashboard.html'); }
+    renderSidebar('config');
+    renderBottomNav('config');
+    loadUsuarios();
+  }
+</script>
+</body>
+</html>

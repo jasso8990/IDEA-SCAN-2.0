@@ -1,73 +1,148 @@
-# 🏭 Warehouse Manager System
+# 🏭 IDEA SCAN 2.0 — Warehouse Manager
+**Sistema WMS de gestión de almacén — CCA Group**
 
-Sistema de gestión de almacén 100% funcional en GitHub Pages, sin servidor.
+---
+
+## ✅ PASOS PARA ACTIVAR LA APLICACIÓN
+
+### PASO 1 — Crear proyecto en Supabase (base de datos)
+
+1. Ve a **https://supabase.com** y crea una cuenta gratuita
+2. Clic en **"New Project"**
+3. Llena los datos:
+   - **Name:** IDEA-SCAN
+   - **Database Password:** (anota esta contraseña)
+   - **Region:** US East (o el más cercano)
+4. Espera 2 minutos mientras se crea el proyecto
+5. Una vez creado, ve a **Settings → API**
+6. Copia estos dos valores:
+   - **Project URL** (algo como `https://abcdef.supabase.co`)
+   - **anon public key** (clave larga)
+
+---
+
+### PASO 2 — Crear las tablas en Supabase
+
+1. En tu proyecto Supabase, ve a **SQL Editor** (ícono de código en el menú izquierdo)
+2. Clic en **"New Query"**
+3. Abre el archivo `supabase-schema.sql` de este repositorio
+4. Copia y pega TODO el contenido en el editor
+5. Clic en **"Run"** (botón verde)
+6. Debes ver "Success. No rows returned"
+
+---
+
+### PASO 3 — Conectar la app a tu base de datos
+
+1. Abre el archivo `src/js/core/config.js` en GitHub
+2. Clic en el ícono ✏️ (editar)
+3. Reemplaza estas dos líneas:
+   ```
+   const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+   const SUPABASE_KEY = 'YOUR_ANON_KEY';
+   ```
+   Con tus datos reales, por ejemplo:
+   ```
+   const SUPABASE_URL = 'https://abcdefghij.supabase.co';
+   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6...';
+   ```
+4. Clic en **"Commit changes"**
+
+---
+
+### PASO 4 — Activar GitHub Pages
+
+1. En tu repositorio de GitHub, ve a **Settings**
+2. En el menú izquierdo, clic en **"Pages"**
+3. En "Source", selecciona **"Deploy from a branch"**
+4. En "Branch", selecciona **"main"** y carpeta **"/ (root)"**
+5. Clic en **"Save"**
+6. Espera 3 minutos
+7. Tu app estará en: `https://TU_USUARIO.github.io/IDEA-SCAN-2.0/login.html`
+
+---
+
+## 🔐 Usuario por defecto
+
+| Usuario | Contraseña | Rol           |
+|---------|------------|---------------|
+| admin   | admin123   | Administrador |
+
+> ⚠️ **Cambia la contraseña después del primer acceso** en Configuración → Usuarios
+
+---
+
+## 📱 Instalar como app en el celular
+
+### iPhone / iPad:
+1. Abre Safari y ve a tu URL de la app
+2. Toca el ícono de compartir (cuadrado con flecha)
+3. Selecciona **"Agregar a pantalla de inicio"**
+
+### Android:
+1. Abre Chrome y ve a tu URL
+2. Toca el menú (3 puntos)
+3. Selecciona **"Instalar app"**
 
 ---
 
 ## 📁 Estructura de archivos
 
 ```
-/
-├── index.html              ← Página de LOGIN (página principal)
-├── css/
-│   ├── global.css          ← Estilos generales del sistema
-│   ├── login.css           ← Estilos de la pantalla de login
-│   └── dashboard.css       ← Estilos del layout y dashboard
-├── js/
-│   ├── auth.js             ← Autenticación y sesiones
-│   ├── storage.js          ← Base de datos (localStorage)
-│   ├── dashboard.js        ← Lógica del dashboard
-│   ├── inventory.js        ← Gestión de inventario
-│   ├── movements.js        ← Entradas y salidas
-│   ├── locations.js        ← Gestión de ubicaciones
-│   ├── reports.js          ← Reportes y exportaciones
-│   └── users.js            ← Gestión de usuarios
-└── pages/
-    ├── dashboard.html      ← Panel principal
-    ├── inventory.html      ← Inventario de productos
-    ├── inbound.html        ← Registro de entradas
-    ├── outbound.html       ← Registro de salidas
-    ├── locations.html      ← Ubicaciones del almacén
-    ├── reports.html        ← Reportes y estadísticas
-    └── users.html          ← Gestión de usuarios (solo admin)
+IDEA-SCAN-2.0/
+├── login.html          ← Pantalla de inicio de sesión
+├── dashboard.html      ← Panel principal con KPIs
+├── inventario.html     ← Gestión de inventario
+├── entradas.html       ← Registro de entradas
+├── salidas.html        ← Registro de salidas
+├── ai-entry.html       ← Análisis con IA
+├── reportes.html       ← Reportes y exportación
+├── config.html         ← Configuración (solo admin)
+├── sw.js               ← Service Worker (PWA)
+├── manifest.json       ← Configuración de la app
+├── supabase-schema.sql ← Script de base de datos
+└── src/
+    ├── css/
+    │   ├── base.css        ← Variables y tipografía
+    │   ├── layout.css      ← Sidebar, header, navegación
+    │   ├── components.css  ← Botones, tablas, modales
+    │   ├── utilities.css   ← Helpers y utilidades
+    │   └── pages/
+    │       ├── login.css
+    │       ├── dashboard.css
+    │       └── ai-entry.css
+    └── js/
+        ├── core/
+        │   ├── config.js   ← ⚠️ Edita con tus claves Supabase
+        │   ├── auth.js     ← Autenticación
+        │   └── nav.js      ← Navegación
+        └── pages/
+            ├── login.js
+            ├── dashboard.js
+            ├── inventario.js
+            ├── entradas.js
+            ├── salidas.js
+            ├── ai-entry.js
+            ├── reportes.js
+            └── config.js
 ```
 
 ---
 
-## 🔐 Usuarios predeterminados
+## 🤖 Función de Análisis IA
 
-| Usuario    | Contraseña | Rol           |
-|------------|------------|---------------|
-| admin      | admin123   | Administrador |
-| operador   | op123      | Operador      |
+La página **Análisis IA** usa Claude para analizar fotos de productos:
+1. Toma una foto del producto/caja
+2. La IA detecta automáticamente el SKU, descripción y código de barras
+3. Puedes guardar la entrada directamente desde el resultado
 
----
-
-## ✅ Funcionalidades incluidas
-
-- **Login** con sesión segura
-- **Dashboard** con KPIs en tiempo real
-- **Inventario** completo (CRUD de productos)
-- **Entradas** de mercancía con folios automáticos
-- **Salidas** con validación de stock
-- **Ubicaciones** con mapa visual del almacén
-- **Reportes** (Inventario, Movimientos, Valorización, Top Productos)
-- **Exportar CSV** en todas las secciones
-- **Gestión de usuarios** (solo administradores)
-- **Alertas** de stock bajo / sin stock
+> Esta función requiere conexión a internet y usa la API de Anthropic.
 
 ---
 
-## 💾 Almacenamiento
+## 📞 Soporte
 
-Los datos se guardan en el **localStorage** del navegador. Esto significa:
-- No se necesita servidor ni base de datos
-- Los datos persisten entre sesiones
-- Cada navegador/dispositivo tiene sus propios datos
-
----
-
-## 🔒 Notas de seguridad
-
-Este sistema es para uso interno en redes locales o equipos confiables.
-Para producción con múltiples usuarios, se recomienda agregar un backend real.
+Si tienes problemas, revisa:
+1. Que las claves de Supabase estén correctas en `config.js`
+2. Que hayas ejecutado el SQL de `supabase-schema.sql`
+3. Que GitHub Pages esté activado y apunte a la rama `main`
