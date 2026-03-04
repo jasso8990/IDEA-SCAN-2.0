@@ -1,0 +1,256 @@
+/* ═══════════════════════════════════════════════════════
+   pages/login.css — Página de login
+   IDEA SCAN 2.0 — Tema Azul + Naranja
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Background ──────────────────────────────────────── */
+.login-bg {
+  min-height: 100vh;
+  background: linear-gradient(145deg, #071a52 0%, #0d2b7a 45%, #12388a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Círculos de fondo decorativos azules */
+.login-bg::before {
+  content: '';
+  position: absolute;
+  width: 700px; height: 700px;
+  border-radius: 50%;
+  border: 1px solid rgba(249,115,22,.08);
+  top: -300px; right: -200px;
+  animation: bgRotate 25s linear infinite;
+}
+.login-bg::after {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px;
+  border-radius: 50%;
+  border: 1px solid rgba(249,115,22,.06);
+  bottom: -200px; left: -150px;
+  animation: bgRotate 20s linear infinite reverse;
+}
+@keyframes bgRotate { to { transform: rotate(360deg); } }
+
+/* Cajas flotantes decorativas con color naranja */
+.float-box {
+  position: absolute;
+  border-radius: 14px;
+  border: 1px solid rgba(249,115,22,.12);
+  background: rgba(249,115,22,.04);
+  animation: float 7s ease-in-out infinite;
+}
+.float-box:nth-child(1) { width:80px;  height:80px;  top:10%;    left:8%;    animation-delay:0s; }
+.float-box:nth-child(2) { width:50px;  height:50px;  top:70%;    left:5%;    animation-delay:1.5s; }
+.float-box:nth-child(3) { width:100px; height:60px;  top:15%;    right:6%;   animation-delay:3s; }
+.float-box:nth-child(4) { width:60px;  height:60px;  bottom:15%; right:10%;  animation-delay:1s; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-18px) rotate(3deg); }
+}
+
+/* Línea de scan animada (guiño al ícono) */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(249,115,22,.6), transparent);
+  animation: scanMove 4s ease-in-out infinite;
+  top: 30%;
+}
+@keyframes scanMove {
+  0%, 100% { top: 20%; opacity: 0; }
+  20%       { opacity: 1; }
+  80%       { opacity: 1; }
+  0%        { top: 20%; }
+  100%      { top: 80%; }
+}
+
+/* ── Login Card ──────────────────────────────────────── */
+.login-card {
+  position: relative; z-index: 10;
+  background: white;
+  border-radius: 22px;
+  width: 100%; max-width: 420px;
+  box-shadow:
+    0 32px 80px rgba(7,26,82,.40),
+    0 0 0 1px rgba(249,115,22,.15);
+  overflow: hidden;
+  animation: cardIn .5s cubic-bezier(.34,1.4,.64,1);
+}
+@keyframes cardIn {
+  from { transform: translateY(30px) scale(.95); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ── Header de la card ───────────────────────────────── */
+.login-header {
+  background: linear-gradient(145deg, #071a52 0%, #0d2b7a 100%);
+  padding: 32px 28px 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 3px solid var(--orange);
+}
+/* Brillo de fondo naranja */
+.login-header::after {
+  content: '';
+  position: absolute;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(249,115,22,.25) 0%, transparent 70%);
+  bottom: -60px; right: -40px;
+  border-radius: 50%;
+}
+
+.login-logo-wrap {
+  width: 80px; height: 80px;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 0 auto 14px;
+  box-shadow:
+    0 8px 32px rgba(249,115,22,.50),
+    0 0 0 3px rgba(249,115,22,.25);
+  position: relative; z-index: 1;
+  background: var(--orange);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+}
+.login-logo-wrap img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 18px;
+}
+
+.login-app-name {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 28px; font-weight: 900;
+  color: white; letter-spacing: 1px;
+  line-height: 1; position: relative; z-index: 1;
+}
+.login-app-name span { color: var(--orange-l); }
+
+.login-company {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,.45);
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-top: 5px; position: relative; z-index: 1;
+}
+
+/* ── Body de la card ─────────────────────────────────── */
+.login-body { padding: 28px; }
+
+.login-tagline {
+  text-align: center;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-400); margin-bottom: 22px;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* ── Error message ───────────────────────────────────── */
+.error-msg {
+  background: rgba(239,68,68,.07);
+  border: 1px solid rgba(239,68,68,.20);
+  color: #dc2626;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 12px; font-weight: 500;
+  margin-bottom: 16px;
+  display: none; align-items: center; gap: 6px;
+}
+.error-msg.show { display: flex; }
+
+/* ── Form inputs ─────────────────────────────────────── */
+.form-input-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.form-input-icon {
+  position: absolute; left: 12px;
+  font-size: 15px; pointer-events: none;
+  z-index: 1;
+}
+.form-input {
+  width: 100%; height: 44px;
+  padding: 0 12px 0 38px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  font-size: 14px; color: var(--text-900);
+  background: var(--surface2);
+  transition: all .18s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(249,115,22,.12);
+  background: white;
+}
+.form-input::placeholder { color: var(--text-300); }
+
+.input-toggle {
+  position: absolute; right: 10px;
+  background: none; border: none;
+  font-size: 16px; cursor: pointer;
+  color: var(--text-300); padding: 4px;
+  transition: color .18s;
+}
+.input-toggle:hover { color: var(--navy); }
+
+.form-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-700);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: 6px; display: block;
+}
+
+.form-group { margin-bottom: 16px; }
+
+/* ── Login button ────────────────────────────────────── */
+.login-btn {
+  width: 100%; height: 48px;
+  background: linear-gradient(135deg, var(--orange), var(--orange-d));
+  color: white;
+  border: none; border-radius: 12px;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 16px; font-weight: 900;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 6px 24px rgba(249,115,22,.40);
+  display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+  margin-top: 8px;
+  letter-spacing: .5px;
+}
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(249,115,22,.50);
+}
+.login-btn:active { transform: translateY(0); }
+.login-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* ── Footer ──────────────────────────────────────────── */
+.login-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--text-300);
+}
+
+/* ── Spinner ─────────────────────────────────────────── */
+.spinner {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: white;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile ──────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .login-header   { padding: 24px 22px 22px; }
+  .login-body     { padding: 22px; }
+  .login-app-name { font-size: 24px; }
+  .login-logo-wrap { width: 66px; height: 66px; font-size: 30px; }
+  .float-box      { display: none; }
+}
