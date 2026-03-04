@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Warehouse Manager</title>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <link rel="stylesheet" href="../css/dashboard.css"/>
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon-sm">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <rect x="4" y="18" width="32" height="18" rx="2" fill="#F59E0B"/>
+            <rect x="10" y="10" width="20" height="10" rx="1" fill="#FBBF24"/>
+            <rect x="16" y="4" width="8" height="8" rx="1" fill="#FDE68A"/>
+          </svg>
+        </div>
+        <span class="brand-name">WH Manager</span>
+        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item active">
+          <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+        </a>
+        <a href="inventory.html" class="nav-item">
+          <span class="nav-icon">📦</span><span class="nav-label">Inventario</span>
+        </a>
+        <a href="inbound.html" class="nav-item">
+          <span class="nav-icon">📥</span><span class="nav-label">Entradas</span>
+        </a>
+        <a href="outbound.html" class="nav-item">
+          <span class="nav-icon">📤</span><span class="nav-label">Salidas</span>
+        </a>
+        <a href="locations.html" class="nav-item">
+          <span class="nav-icon">🗺️</span><span class="nav-label">Ubicaciones</span>
+        </a>
+        <a href="reports.html" class="nav-item">
+          <span class="nav-icon">📈</span><span class="nav-label">Reportes</span>
+        </a>
+        <a href="users.html" class="nav-item admin-only">
+          <span class="nav-icon">👥</span><span class="nav-label">Usuarios</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar">A</div>
+          <div>
+            <div class="user-name" id="user-display-name">Admin</div>
+            <div class="user-role" id="user-display-role">Administrador</div>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">⏻ Salir</button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Dashboard</h1>
+          <p class="page-subtitle">Resumen general del almacén</p>
+        </div>
+        <div class="header-actions">
+          <span class="date-display" id="current-date"></span>
+        </div>
+      </header>
+
+      <!-- KPI CARDS -->
+      <section class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-icon">📦</div>
+          <div class="kpi-data">
+            <div class="kpi-value" id="kpi-total-products">0</div>
+            <div class="kpi-label">Total Productos</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-data">
+            <div class="kpi-value" id="kpi-in-stock">0</div>
+            <div class="kpi-label">En Stock</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-yellow">
+          <div class="kpi-icon">⚠️</div>
+          <div class="kpi-data">
+            <div class="kpi-value" id="kpi-low-stock">0</div>
+            <div class="kpi-label">Stock Bajo</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-red">
+          <div class="kpi-icon">🚫</div>
+          <div class="kpi-data">
+            <div class="kpi-value" id="kpi-out-stock">0</div>
+            <div class="kpi-label">Sin Stock</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-icon">📥</div>
+          <div class="kpi-data">
+            <div class="kpi-value" id="kpi-entries-today">0</div>
+            <div class="kpi-label">Entradas Hoy</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-orange">
+          <div class="kpi-icon">📤</div>
+          <div class="kpi-data">
+            <div class="kpi-value" id="kpi-exits-today">0</div>
+            <div class="kpi-label">Salidas Hoy</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ALERTS & RECENT ACTIVITY -->
+      <section class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>⚠️ Alertas de Stock</h2>
+            <a href="inventory.html" class="btn-link">Ver todo →</a>
+          </div>
+          <div class="card-body" id="stock-alerts">
+            <p class="empty-state">Cargando alertas...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>🕐 Actividad Reciente</h2>
+          </div>
+          <div class="card-body" id="recent-activity">
+            <p class="empty-state">Sin actividad reciente</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TOP PRODUCTS TABLE -->
+      <section class="card mt-4">
+        <div class="card-header">
+          <h2>📦 Productos con Movimiento</h2>
+        </div>
+        <div class="card-body">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Stock</th>
+                <th>Ubicación</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="top-products-table">
+              <tr><td colspan="6" class="empty-state">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/storage.js"></script>
+  <script src="../js/dashboard.js"></script>
+</body>
+</html>
