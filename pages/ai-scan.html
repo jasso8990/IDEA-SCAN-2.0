@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Scanner — WMS</title>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <link rel="stylesheet" href="../css/dashboard.css"/>
+  <link rel="stylesheet" href="../css/ai-scan.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-icon-sm"><svg width="26" height="26" viewBox="0 0 40 40" fill="none"><rect x="4" y="18" width="32" height="18" rx="2" fill="#F59E0B"/><rect x="10" y="10" width="20" height="10" rx="1" fill="#FBBF24"/><rect x="16" y="4" width="8" height="8" rx="1" fill="#FDE68A"/></svg></div>
+      <span class="brand-name">WH Manager</span>
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"  class="nav-item"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
+      <a href="inventario.html" class="nav-item"><span class="nav-icon">📦</span><span class="nav-label">Inventario</span></a>
+      <a href="entradas.html"   class="nav-item"><span class="nav-icon">📥</span><span class="nav-label">Entradas</span></a>
+      <a href="salidas.html"    class="nav-item"><span class="nav-icon">📤</span><span class="nav-label">Salidas</span></a>
+      <a href="ordenes.html"    class="nav-item"><span class="nav-icon">📋</span><span class="nav-label">Órdenes</span></a>
+      <a href="ai-scan.html"    class="nav-item active"><span class="nav-icon">🤖</span><span class="nav-label">AI Scanner</span></a>
+      <a href="reportes.html"   class="nav-item"><span class="nav-icon">📈</span><span class="nav-label">Reportes</span></a>
+      <a href="usuarios.html"   class="nav-item admin-only"><span class="nav-icon">👥</span><span class="nav-label">Usuarios</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div><div class="user-name" id="user-display-name">—</div><div class="user-role" id="user-display-role">—</div></div>
+      </div>
+      <button class="btn-logout" onclick="logout()">⏻ Salir</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">🤖 AI Scanner</h1>
+        <p class="page-subtitle">Escaneo inteligente con Claude AI · Extracción automática de datos</p>
+      </div>
+      <div class="header-actions">
+        <div class="ai-badge">
+          <span>⚡</span> Powered by Claude AI
+        </div>
+      </div>
+    </header>
+
+    <div class="ai-layout">
+
+      <!-- UPLOAD PANEL -->
+      <div class="ai-upload-panel">
+        <div class="card">
+          <div class="card-header"><h2>📷 Imagen a Escanear</h2></div>
+          <div class="card-body">
+
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="drop-zone"
+                 ondragover="event.preventDefault();this.classList.add('drag-over')"
+                 ondragleave="this.classList.remove('drag-over')"
+                 ondrop="handleDrop(event)">
+              <div class="drop-content" id="drop-content">
+                <div class="drop-icon">📦</div>
+                <p>Arrastra una imagen aquí</p>
+                <p class="drop-sub">o haz clic para seleccionar</p>
+                <button class="btn-secondary" onclick="document.getElementById('file-input').click()">Seleccionar imagen</button>
+                <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(event)"/>
+              </div>
+              <img id="preview-img" class="hidden" style="max-width:100%;max-height:300px;border-radius:8px;object-fit:contain"/>
+            </div>
+
+            <!-- Camera -->
+            <div style="margin-top:12px;text-align:center">
+              <button class="btn-secondary" onclick="openCamera()" style="width:100%">📷 Usar Cámara</button>
+            </div>
+
+            <!-- Scan button -->
+            <button class="btn-scan" id="btn-scan" onclick="runScan()" disabled>
+              🤖 Escanear con Claude AI
+            </button>
+
+            <div class="scan-status" id="scan-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTS PANEL -->
+      <div class="ai-results-panel">
+
+        <!-- Extracted data card -->
+        <div class="card" id="results-card">
+          <div class="card-header">
+            <h2>📋 Datos Extraídos</h2>
+            <div id="confidence-badge"></div>
+          </div>
+          <div class="card-body" id="results-body">
+            <div class="ai-placeholder">
+              <div style="font-size:48px;margin-bottom:12px">🤖</div>
+              <p>Sube una imagen de un paquete, etiqueta o guía de envío</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Claude AI extraerá automáticamente: tracking, carrier, parte, PO, serial, descripción, cantidad, peso y más</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save to inventory -->
+        <div class="card hidden" id="save-card">
+          <div class="card-header"><h2>💾 Guardar en Inventario</h2></div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group"><label>Cliente *</label><select id="save-cliente"><option value="">Seleccionar...</option></select></div>
+              <div class="form-group"><label>Almacén *</label><select id="save-almacen"><option value="">Seleccionar...</option></select></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Zona</label><input type="text" id="save-zona"/></div>
+              <div class="form-group"><label>Ubicación</label><input type="text" id="save-ubicacion" placeholder="Rack-A-01"/></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Cantidad</label><input type="number" id="save-cantidad" value="1" min="1"/></div>
+              <div class="form-group"><label>Bultos</label><input type="number" id="save-bultos" value="1" min="0"/></div>
+              <div class="form-group"><label>Área</label><input type="text" id="save-area" value="OPS"/></div>
+            </div>
+            <button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveToInventario()">
+              📦 Guardar en Inventario (Supabase)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera modal -->
+    <div class="modal-overlay hidden" id="modal-camera">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>📷 Cámara</h3>
+          <button class="modal-close" onclick="closeCamera()">✕</button>
+        </div>
+        <div class="modal-body" style="text-align:center">
+          <video id="camera-video" autoplay style="width:100%;border-radius:8px;max-height:400px"></video>
+          <button class="btn-primary" style="margin-top:12px;width:100%" onclick="capturePhoto()">📸 Capturar Foto</button>
+          <canvas id="camera-canvas" style="display:none"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/db.js"></script>
+<script src="../js/ai-scan.js"></script>
+</body>
+</html>

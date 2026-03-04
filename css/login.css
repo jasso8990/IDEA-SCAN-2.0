@@ -1,0 +1,125 @@
+/* ============================
+   LOGIN PAGE STYLES
+   ============================ */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.06) 0%, transparent 50%),
+              linear-gradient(135deg, #0F1117 0%, #161B26 100%);
+  z-index: 0;
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.brand-icon {
+  display: inline-flex;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.login-brand h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.login-brand h1 span {
+  color: var(--primary);
+}
+
+.login-brand p {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.login-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+
+.login-card h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.error-msg {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #EF4444;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.btn-login {
+  width: 100%;
+  background: var(--primary);
+  color: #0F1117;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 8px;
+}
+
+.btn-login:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.login-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}

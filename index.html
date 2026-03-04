@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Warehouse Manager — Acceso</title>
+  <link rel="stylesheet" href="css/global.css"/>
+  <link rel="stylesheet" href="css/login.css"/>
+</head>
+<body class="login-page">
+
+  <div class="login-bg">
+    <div class="grid-overlay"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+  </div>
+
+  <div class="login-container">
+    <div class="login-brand">
+      <div class="brand-icon">
+        <svg width="44" height="44" viewBox="0 0 40 40" fill="none">
+          <rect x="4" y="18" width="32" height="18" rx="2" fill="#F59E0B"/>
+          <rect x="10" y="10" width="20" height="10" rx="1" fill="#FBBF24"/>
+          <rect x="16" y="4" width="8" height="8" rx="1" fill="#FDE68A"/>
+          <rect x="12" y="24" width="6" height="8" fill="#D97706"/>
+          <rect x="22" y="24" width="6" height="8" fill="#D97706"/>
+        </svg>
+      </div>
+      <h1>Warehouse<span>Manager</span></h1>
+      <p>Sistema de Gestión de Almacén · IDEA-SCAN</p>
+    </div>
+
+    <div class="login-card">
+      <h2>Iniciar Sesión</h2>
+
+      <div id="login-error" class="error-msg hidden">Usuario o contraseña incorrectos</div>
+
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="username" placeholder="Ingresa tu usuario" autocomplete="off"/>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="password-wrap">
+          <input type="password" id="password" placeholder="••••••••"/>
+          <button class="btn-eye" onclick="togglePassword()" tabindex="-1">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-login" onclick="handleLogin()">
+        <span class="btn-login-text">Entrar al Sistema</span>
+        <span class="btn-login-spinner hidden">⟳</span>
+      </button>
+
+      <div class="login-powered">
+        <span>Conectado a</span>
+        <svg width="70" height="14" viewBox="0 0 140 28" fill="none" style="vertical-align:middle">
+          <text x="0" y="20" fill="#3ECF8E" font-family="sans-serif" font-size="18" font-weight="bold">supabase</text>
+        </svg>
+        <span>+</span>
+        <span style="color:#F59E0B;font-weight:700">Claude AI</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    function togglePassword() {
+      const p = document.getElementById('password');
+      p.type = p.type === 'password' ? 'text' : 'password';
+    }
+  </script>
+</body>
+</html>
