@@ -1,0 +1,44 @@
+{
+  "name": "IDEA Scan - Warehouse Manager",
+  "short_name": "IDEA Scan",
+  "description": "Sistema WMS de gestión de almacén — CCA Group",
+  "start_url": "/IDEA-SCAN-2.0/",
+  "display": "standalone",
+  "background_color": "#0D1F4C",
+  "theme_color": "#0D1F4C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "es-MX"
+}
