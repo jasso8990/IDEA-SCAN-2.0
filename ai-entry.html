@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IA Scan — IDEA SCAN 2.0</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon32.png">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Libre+Barcode+39&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="src/css/base.css">
+<link rel="stylesheet" href="src/css/layout.css">
+<link rel="stylesheet" href="src/css/components.css">
+<link rel="stylesheet" href="src/css/utilities.css">
+<style>
+.label-4x3,.label-3x2{background:white;font-family:Arial,sans-serif;border:1px solid #bbb;}
+.label-4x3{width:100%;max-width:384px;margin:0 auto;}
+.label-3x2{width:100%;max-width:288px;margin:0 auto;}
+.lbl-header{text-align:center;font-size:11px;padding:6px 8px 2px;color:#000;}
+.lbl-sku{font-size:34px;font-weight:900;padding:0 8px 2px;color:#000;line-height:1.1;}
+.lbl-sku-sm{font-size:26px;font-weight:900;padding:0 8px 2px;color:#000;line-height:1.1;}
+.lbl-bc-area{padding:2px 8px;display:flex;align-items:center;gap:6px;}
+.lbl-bc{font-family:'Libre Barcode 39',monospace;font-size:46px;line-height:1;flex:1;color:#000;}
+.lbl-qr-box{width:50px;height:50px;background:#222;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.lbl-qr-box span{color:white;font-size:6px;text-align:center;word-break:break-all;padding:3px;line-height:1.2;}
+.lbl-row{display:flex;padding:2px 8px;font-size:10.5px;color:#000;gap:3px;}
+.lbl-lbl{font-weight:700;min-width:68px;}
+.lbl-val{flex:1;}
+.lbl-div{border:none;border-top:1px solid #888;margin:3px 8px;}
+.lbl-area-lbl{text-align:center;font-size:10px;color:#000;margin-top:1px;}
+.lbl-area-val{text-align:center;font-size:36px;font-weight:900;color:#000;padding:0 8px;line-height:1.1;}
+.lbl-area-sm{text-align:center;font-size:28px;font-weight:900;color:#000;padding:0 8px;line-height:1.1;}
+.lbl-foot{font-size:10px;color:#000;padding:2px 8px 5px;}
+.lbl-foot-row{display:flex;justify-content:space-between;padding:2px 8px 5px;font-size:10px;color:#000;}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="main-content">
+    <header class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">🤖 IA <span>Scan</span> — Entrada</div>
+    </header>
+    <div class="page-body" style="max-width:960px;margin:0 auto;">
+
+      <div class="steps-bar">
+        <div class="step active" id="step1"><div class="step-num">1</div><span class="step-label">Foto & IA</span></div>
+        <div class="step" id="step2"><div class="step-num">2</div><span class="step-label">Confirmar</span></div>
+        <div class="step" id="step3"><div class="step-num">3</div><span class="step-label">Etiquetas</span></div>
+      </div>
+
+      <!-- PASO 1 -->
+      <div id="panelStep1">
+        <div class="card mb-16">
+          <div class="card-header"><span>📸</span><span class="card-title">Captura del Packing / Label</span></div>
+          <div class="card-body">
+            <div class="photo-upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+              <div class="photo-upload-icon">📷</div>
+              <div class="photo-upload-text">Toca para subir o capturar foto</div>
+              <div class="photo-upload-sub">Foto del packing list o label · JPG, PNG · Max 10MB</div>
+            </div>
+            <div id="previewWrap" style="display:none;position:relative;">
+              <img id="previewImg" style="width:100%;border-radius:10px;max-height:320px;object-fit:contain;background:#111;">
+              <button onclick="resetPhoto()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.65);border:none;color:white;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;">✕ Cambiar</button>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+          </div>
+        </div>
+        <button class="btn-analyze" id="btnAnalyze" disabled onclick="analyzePhoto()">🤖 Analizar con IA</button>
+      </div>
+
+      <!-- PASO 2 -->
+      <div id="panelStep2" style="display:none;">
+        <div class="card mb-16">
+          <div class="card-header" style="background:var(--navy);">
+            <span style="color:white;">📋</span>
+            <span class="card-title" style="color:white;">Confirmar / Editar Datos</span>
+            <span class="badge badge-orange" style="margin-left:auto;" id="clienteBadge">—</span>
+          </div>
+          <div class="card-body">
+            <div class="sku-display mb-12">
+              <div><div class="sku-lbl">SKU GENERADO</div><div class="sku-val" id="skuDisplay">—</div></div>
+              <button onclick="generarSKU()" style="background:rgba(255,255,255,.12);border:none;color:white;padding:5px 10px;border-radius:7px;cursor:pointer;font-size:12px;">↻</button>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label class="form-label">Cliente <span class="req">*</span></label>
+                <select class="form-control" id="fCliente" onchange="generarSKU()"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Área <span class="req">*</span></label>
+                <select class="form-control" id="fArea">
+                  <option value="OPS">OPS</option><option value="REC">REC</option>
+                  <option value="QA">QA</option><option value="SHIP">SHIP</option><option value="HOLD">HOLD</option>
+                </select>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label class="form-label">Vendor / Proveedor</label>
+                <input class="form-control" id="fVendor" placeholder="Ej. TRIAD">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Carrier</label>
+                <input class="form-control" id="fCarrier" placeholder="Ej. FEDEX, UPS">
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label class="form-label">Tracking #</label>
+                <input class="form-control" id="fTracking" placeholder="Número de rastreo">
+              </div>
+              <div class="form-group">
+                <label class="form-label">PO / Orden</label>
+                <input class="form-control" id="fPO" placeholder="Ej. PO-2024-001">
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label class="form-label">Número de Parte</label>
+                <input class="form-control" id="fPartNumber" placeholder="Part Number">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Descripción</label>
+                <input class="form-control" id="fDescripcion" placeholder="Descripción">
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label class="form-label">Cantidad (piezas)</label>
+                <input class="form-control" type="number" id="fCantidad" min="1" value="1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Total de Bultos <span class="req">*</span></label>
+                <input class="form-control" type="number" id="fBultos" min="1" value="1">
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label class="form-label">País de Origen</label>
+                <input class="form-control" id="fOrigen" placeholder="USA, México...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Número de Serie</label>
+                <input class="form-control" id="fSerial" placeholder="Opcional">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" onclick="goStep(1)">← Volver</button>
+          <button class="btn btn-primary" style="flex:1;padding:14px;" onclick="guardarEntrada()">💾 Guardar y Generar Etiquetas</button>
+        </div>
+      </div>
+
+      <!-- PASO 3: ETIQUETAS -->
+      <div id="panelStep3" style="display:none;">
+        <div class="card mb-16">
+          <div class="card-header" style="background:#16a34a;">
+            <span style="color:white;">✅</span>
+            <span class="card-title" style="color:white;">Entrada Registrada — Imprimir Etiquetas</span>
+          </div>
+          <div class="card-body">
+            <!-- Navegador de bultos -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;background:var(--surface2);padding:12px;border-radius:10px;">
+              <span style="font-size:13px;font-weight:700;color:var(--navy);">Bulto:</span>
+              <button onclick="prevBulto()" style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:white;cursor:pointer;font-size:18px;line-height:1;">‹</button>
+              <span id="bultoInd" style="font-family:monospace;font-weight:900;color:var(--navy);font-size:16px;min-width:70px;text-align:center;">1 / 1</span>
+              <button onclick="nextBulto()" style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:white;cursor:pointer;font-size:18px;line-height:1;">›</button>
+              <span style="font-size:11px;color:var(--text-400);">Imprime cada bulto por separado</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+              <!-- 4x3 -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <span style="font-size:11px;font-weight:700;color:var(--text-400);text-transform:uppercase;">Etiqueta 4×3 in</span>
+                  <button class="btn btn-navy btn-sm" onclick="imprimirLabel('l4x3')">🖨️ Imprimir</button>
+                </div>
+                <div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.12);">
+                  <div class="label-4x3" id="l4x3">
+                    <div class="lbl-header">CCA Group</div>
+                    <div class="lbl-sku" id="l1s">SAF2602436</div>
+                    <div class="lbl-bc-area">
+                      <div class="lbl-bc" id="l1bc">*SAF2602436*</div>
+                      <div class="lbl-qr-box"><span id="l1qr">SAF2602436</span></div>
+                    </div>
+                    <div class="lbl-row"><span class="lbl-lbl">Vendor:</span><span class="lbl-val" id="l1v">TRIAD</span><span class="lbl-lbl" style="min-width:38px;margin-left:6px;">Date:</span><span class="lbl-val" id="l1d">09/02/2026</span></div>
+                    <div class="lbl-row"><span class="lbl-lbl">Tracking #:</span><span class="lbl-val" id="l1t" style="font-size:9.5px;">43500008884929262</span><span class="lbl-lbl" style="min-width:46px;margin-left:4px;">Carrier:</span><span class="lbl-val" id="l1c">FEDEX</span></div>
+                    <div class="lbl-div"></div>
+                    <div class="lbl-area-lbl">Area</div>
+                    <div class="lbl-area-val" id="l1a">OPS</div>
+                    <div class="lbl-foot" id="l1b">1 / 1</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3x2 -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <span style="font-size:11px;font-weight:700;color:var(--text-400);text-transform:uppercase;">Etiqueta 3×2 in</span>
+                  <button class="btn btn-primary btn-sm" onclick="imprimirLabel('l3x2')">🖨️ Imprimir</button>
+                </div>
+                <div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.12);">
+                  <div class="label-3x2" id="l3x2">
+                    <div class="lbl-header">CCA Group</div>
+                    <div class="lbl-sku-sm" id="l2s">SAF2602436</div>
+                    <div class="lbl-row"><span class="lbl-lbl">Vendor:</span><span class="lbl-val" id="l2v">TRIAD</span></div>
+                    <div class="lbl-row" style="font-size:9.5px;"><span class="lbl-lbl">Tracking #:</span><span class="lbl-val" id="l2t">43500008884929262</span></div>
+                    <div class="lbl-div"></div>
+                    <div class="lbl-area-lbl">Area</div>
+                    <div class="lbl-area-sm" id="l2a">OPS</div>
+                    <div class="lbl-foot-row"><span id="l2b">1 / 1</span><span><b>Date:</b> <span id="l2d">09/02/2026</span></span></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:16px;">
+              <button class="btn btn-outline" style="flex:1;" onclick="imprimirAmbas()">🖨️ Imprimir Ambas</button>
+              <button class="btn btn-navy" style="flex:1;" onclick="imprimirTodos()">🖨️ Todos los Bultos</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary w-full" style="padding:14px;" onclick="newEntry()">+ Nueva Entrada</button>
+      </div>
+
+    </div>
+  </div>
+  <nav class="bottom-nav" id="bottomNav"></nav>
+</div>
+
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-spin"></div>
+  <div class="ai-ol-text" id="aiText">Analizando imagen...</div>
+  <div class="ai-ol-sub" id="aiSub">La IA extrae la información del label</div>
+</div>
+
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script>
+'use strict';
+let _user, _imgB64, _sku, _clientes=[], _totalBultos=1, _bulto=1, _saved={};
+
+window.addEventListener('DOMContentLoaded', async()=>{
+  _user = requireAuth(); if(!_user) return;
+  renderSidebar('ai_entry'); renderBottomNav('ai_entry');
+  await loadClientes();
+});
+
+async function loadClientes(){
+  const {data} = await sb().from('clientes').select('id,nombre,codigo').eq('activo',true).order('nombre');
+  _clientes = data||[];
+  const sel = document.getElementById('fCliente');
+  sel.innerHTML = _clientes.map(c=>`<option value="${c.id}" data-codigo="${c.codigo}">${c.nombre}</option>`).join('');
+  if(_user.cliente_id) sel.value = _user.cliente_id;
+  generarSKU();
+}
+
+async function generarSKU(){
+  const sel = document.getElementById('fCliente');
+  const codigo = sel.options[sel.selectedIndex]?.dataset?.codigo || 'GEN';
+  const now = new Date();
+  const prefix = `${codigo}${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}`;
+  const {data} = await sb().from('inventario').select('sku').like('sku',`${prefix}%`).order('sku',{ascending:false}).limit(1);
+  const num = data?.length ? (parseInt(data[0].sku.replace(prefix,''))||0)+1 : 1;
+  _sku = `${prefix}${String(num).padStart(3,'0')}`;
+  document.getElementById('skuDisplay').textContent = _sku;
+  const c = _clientes.find(x=>x.id===sel.value);
+  document.getElementById('clienteBadge').textContent = c?.nombre||'—';
+}
+
+function handlePhoto(e){
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev=>{
+    _imgB64 = ev.target.result.split(',')[1];
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('previewWrap').style.display='block';
+    document.getElementById('uploadArea').style.display='none';
+    document.getElementById('btnAnalyze').disabled=false;
+  };
+  r.readAsDataURL(file);
+}
+
+function resetPhoto(){
+  _imgB64=null;
+  document.getElementById('previewWrap').style.display='none';
+  document.getElementById('uploadArea').style.display='block';
+  document.getElementById('btnAnalyze').disabled=true;
+  document.getElementById('fileInput').value='';
+}
+
+async function analyzePhoto(){
+  if(!_imgB64) return;
+  showAI('Analizando imagen...','La IA extrae información del label');
+  try{
+    const key = (typeof ANTHROPIC_KEY!=='undefined') ? ANTHROPIC_KEY : '';
+    if(!key||key==='YOUR_ANTHROPIC_KEY'){ goStep(2); return; }
+    const prompt=`Analiza este label o packing list de almacén. Extrae toda la información visible.
+Responde ÚNICAMENTE en JSON con esta estructura exacta:
+{"vendor":"","carrier":"","tracking":"","po":"","numero_parte":"","descripcion":"","cantidad":"","serial_number":"","pais_origen":"","cliente":"","area":""}
+Si no encuentras un dato deja el campo en "". Solo JSON puro, sin markdown ni explicaciones.`;
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-opus-4-6',max_tokens:600,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:_imgB64}},
+          {type:'text',text:prompt}
+        ]}]})
+    });
+    const json=await res.json();
+    let d={};
+    try{d=JSON.parse((json.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());}catch(e){}
+    fillForm(d);
+  }catch(err){ alert('IA error: '+err.message+'\nLlena los datos manualmente.'); }
+  finally{ hideAI(); goStep(2); }
+}
+
+function fillForm(d){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v) el.value=v; };
+  set('fVendor',d.vendor); set('fCarrier',d.carrier); set('fTracking',d.tracking);
+  set('fPO',d.po); set('fPartNumber',d.numero_parte); set('fDescripcion',d.descripcion);
+  set('fCantidad',d.cantidad); set('fSerial',d.serial_number); set('fOrigen',d.pais_origen);
+  if(d.area){ const sel=document.getElementById('fArea'); const m=[...sel.options].find(o=>o.value===d.area.toUpperCase()); if(m) sel.value=m.value; }
+  if(d.cliente){ const f=_clientes.find(c=>d.cliente.toLowerCase().includes(c.nombre.toLowerCase())||c.nombre.toLowerCase().includes(d.cliente.toLowerCase())); if(f){document.getElementById('fCliente').value=f.id;generarSKU();}}
+}
+
+async function guardarEntrada(){
+  const cid=document.getElementById('fCliente').value;
+  if(!cid){alert('Selecciona un cliente');return;}
+  showAI('Guardando entrada...','Registrando en base de datos');
+  try{
+    const now=new Date();
+    const folio=`ENT-${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getTime()).slice(-6)}`;
+    const bultos=parseInt(document.getElementById('fBultos').value)||1;
+    const row={
+      sku:_sku, cliente_id:cid,
+      numero_parte:document.getElementById('fPartNumber').value,
+      descripcion:document.getElementById('fDescripcion').value,
+      cantidad:parseInt(document.getElementById('fCantidad').value)||1,
+      bultos, po:document.getElementById('fPO').value,
+      serial_number:document.getElementById('fSerial').value,
+      origin:document.getElementById('fOrigen').value,
+      vendor:document.getElementById('fVendor').value,
+      carrier:document.getElementById('fCarrier').value,
+      tracking_number:document.getElementById('fTracking').value,
+      area:document.getElementById('fArea').value,
+      fecha_entrada:now.toISOString().split('T')[0],
+      folio_entrada:folio, operador_id:_user.id,
+      activo:true, estado:'en_almacen'
+    };
+    const {error}=await sb().from('inventario').insert(row);
+    if(error) throw error;
+    await sb().from('movimientos').insert({tipo:'entrada',folio,cliente_id:cid,sku:_sku,descripcion:row.descripcion,cantidad:row.cantidad,usuario_id:_user.id,referencia:row.po,fecha:now.toISOString()});
+    _saved=row; _totalBultos=bultos; _bulto=1;
+    renderLabels(1);
+    goStep(3);
+  }catch(err){ alert('Error: '+err.message); }
+  finally{ hideAI(); }
+}
+
+function renderLabels(n){
+  const d=_saved;
+  const fecha=new Date((d.fecha_entrada||new Date().toISOString().split('T')[0])+'T12:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const bs=`${n} / ${_totalBultos}`;
+  const sku=_sku||'—';
+  // 4x3
+  document.getElementById('l1s').textContent=sku;
+  document.getElementById('l1bc').textContent=`*${sku}*`;
+  document.getElementById('l1qr').textContent=sku;
+  document.getElementById('l1v').textContent=(d.vendor||'').toUpperCase();
+  document.getElementById('l1d').textContent=fecha;
+  document.getElementById('l1t').textContent=d.tracking_number||'';
+  document.getElementById('l1c').textContent=(d.carrier||'').toUpperCase();
+  document.getElementById('l1a').textContent=d.area||'OPS';
+  document.getElementById('l1b').textContent=bs;
+  // 3x2
+  document.getElementById('l2s').textContent=sku;
+  document.getElementById('l2v').textContent=(d.vendor||'').toUpperCase();
+  document.getElementById('l2t').textContent=d.tracking_number||'';
+  document.getElementById('l2a').textContent=d.area||'OPS';
+  document.getElementById('l2b').textContent=bs;
+  document.getElementById('l2d').textContent=fecha;
+  document.getElementById('bultoInd').textContent=bs;
+}
+
+function prevBulto(){ if(_bulto>1){_bulto--;renderLabels(_bulto);} }
+function nextBulto(){ if(_bulto<_totalBultos){_bulto++;renderLabels(_bulto);} }
+
+function imprimirLabel(id){
+  const esSmall=id==='l3x2';
+  const sz=esSmall?'3in 2in':'4in 3in';
+  const html=document.getElementById(id).outerHTML;
+  const w=window.open('','_blank','width=520,height=420');
+  w.document.write(`<!DOCTYPE html><html><head>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
+<style>
+@page{size:${sz};margin:0}
+body{margin:0;padding:0;font-family:Arial,sans-serif;}
+.label-4x3,.label-3x2{width:100%;border:none;}
+.lbl-header{text-align:center;font-size:11px;padding:6px 8px 2px;}
+.lbl-sku{font-size:34px;font-weight:900;padding:0 8px 2px;line-height:1.1;}
+.lbl-sku-sm{font-size:26px;font-weight:900;padding:0 8px 2px;line-height:1.1;}
+.lbl-bc-area{padding:2px 8px;display:flex;align-items:center;gap:6px;}
+.lbl-bc{font-family:'Libre Barcode 39',monospace;font-size:46px;line-height:1;flex:1;}
+.lbl-qr-box{width:50px;height:50px;background:#222;border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.lbl-qr-box span{color:white;font-size:6px;text-align:center;word-break:break-all;padding:3px;line-height:1.2;}
+.lbl-row{display:flex;padding:2px 8px;font-size:10.5px;gap:3px;}
+.lbl-lbl{font-weight:700;min-width:68px;}
+.lbl-val{flex:1;}
+.lbl-div{border:none;border-top:1px solid #888;margin:3px 8px;}
+.lbl-area-lbl{text-align:center;font-size:10px;margin-top:1px;}
+.lbl-area-val{text-align:center;font-size:36px;font-weight:900;padding:0 8px;line-height:1.1;}
+.lbl-area-sm{text-align:center;font-size:28px;font-weight:900;padding:0 8px;line-height:1.1;}
+.lbl-foot{font-size:10px;padding:2px 8px 5px;}
+.lbl-foot-row{display:flex;justify-content:space-between;padding:2px 8px 5px;font-size:10px;}
+</style></head><body>${html}
+<script>window.onload=()=>{setTimeout(()=>{window.print();window.close();},400);}<\/script>
+</body></html>`);
+  w.document.close();
+}
+
+function imprimirAmbas(){ imprimirLabel('l4x3'); setTimeout(()=>imprimirLabel('l3x2'),900); }
+
+function imprimirTodos(){
+  const saved=_bulto; let i=1;
+  const loop=()=>{
+    if(i>_totalBultos){_bulto=saved;renderLabels(saved);return;}
+    _bulto=i; renderLabels(i);
+    setTimeout(()=>{ imprimirAmbas(); i++; setTimeout(loop,1300); },300);
+  };
+  loop();
+}
+
+function showAI(t,s){ document.getElementById('aiText').textContent=t; document.getElementById('aiSub').textContent=s; document.getElementById('aiOverlay').classList.add('show'); }
+function hideAI(){ document.getElementById('aiOverlay').classList.remove('show'); }
+
+function goStep(n){
+  [1,2,3].forEach(i=>{
+    document.getElementById('panelStep'+i).style.display=i===n?'block':'none';
+    document.getElementById('step'+i).className='step '+(i<n?'done':i===n?'active':'');
+  });
+  if(n===2) generarSKU();
+}
+
+function newEntry(){
+  resetPhoto();
+  ['fVendor','fCarrier','fTracking','fPO','fPartNumber','fDescripcion','fSerial','fOrigen'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('fCantidad').value=1;
+  document.getElementById('fBultos').value=1;
+  _saved={}; _totalBultos=1; _bulto=1;
+  goStep(1);
+}
+</script>
+</body>
+</html>
