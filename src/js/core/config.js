@@ -4,8 +4,11 @@
 'use strict';
 
 // ── Supabase ──────────────────────────────────────────────
-const SUPABASE_URL  = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_KEY  = 'YOUR_ANON_KEY';
+const SUPABASE_URL  = 'https://usqugtxeynkozlobeojt.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzcXVndHhleW5rb3psb2Jlb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTYxMzAsImV4cCI6MjA4NjY3MjEzMH0.zs4XiF8AgcE-l3ebtaxvoN7V9rf-6MHWNxMThiQUXKE';
+
+// ── Schema de la base de datos ────────────────────────────
+const DB_SCHEMA = 'ideascan';
 
 // ── App Info ──────────────────────────────────────────────
 const APP_NAME      = 'IDEA SCAN 2.0';
@@ -15,7 +18,9 @@ const APP_VERSION   = '2.0.0';
 // ── Supabase Client ───────────────────────────────────────
 let _sb = null;
 function sb() {
-  if (!_sb) _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  if (!_sb) _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    db: { schema: DB_SCHEMA }
+  });
   return _sb;
 }
 

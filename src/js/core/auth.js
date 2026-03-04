@@ -1,21 +1,19 @@
 /* ═══════════════════════════════════════════════════════
    auth.js — Autenticación con Supabase
-   Depende de: config.js
+   Schema: ideascan | Tabla: usuarios
+   Campos: username, password_hash, estado ('active'), rol
    ═══════════════════════════════════════════════════════ */
 'use strict';
 
-// ── Session storage key ───────────────────────────────────
 const SESSION_KEY = 'ideascan_user';
 
-// ── Guardar / leer usuario ────────────────────────────────
-function saveUser(u) { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
+function saveUser(u)   { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
 function currentUser() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY)); }
   catch { return null; }
 }
-function clearUser() { localStorage.removeItem(SESSION_KEY); }
+function clearUser()   { localStorage.removeItem(SESSION_KEY); }
 
-// ── Verificar sesión activa ───────────────────────────────
 function requireAuth() {
   const u = currentUser();
   if (!u) { window.location.replace('login.html'); return null; }
@@ -26,28 +24,36 @@ function requireAuth() {
 async function loginWithCredentials(username, password) {
   const { data, error } = await sb()
     .from('usuarios')
-    .select('*')
+    .select('*, clientes(nombre)')
     .eq('username', username.trim().toLowerCase())
-    .eq('activo', true)
+    .eq('estado', 'active')
     .single();
 
   if (error || !data) throw new Error('Usuario no encontrado o inactivo');
 
-  // Comparar contraseña (texto plano — en producción usar bcrypt/hash)
-  if (data.password !== password) throw new Error('Contraseña incorrecta');
+  const hash = data.password_hash;
+  if (!hash) throw new Error('Usuario sin contraseña. Contacta al administrador.');
 
-  // Obtener nombre del cliente si aplica
-  let cliente_nombre = null;
-  if (data.cliente_id) {
-    const { data: cl } = await sb()
-      .from('clientes')
-      .select('nombre')
-      .eq('id', data.cliente_id)
-      .single();
-    cliente_nombre = cl?.nombre || null;
+  // Comparar: primero texto plano, luego base64 decodificado
+  let valid = (hash === password);
+  if (!valid) {
+    try { valid = (atob(hash) === password); } catch(e) {}
   }
+  if (!valid) throw new Error('Contraseña incorrecta');
 
-  const userObj = { ...data, cliente_nombre };
+  // Actualizar último acceso
+  await sb().from('usuarios').update({ ultimo_acceso: new Date().toISOString() }).eq('id', data.id);
+
+  const userObj = {
+    id:             data.id,
+    nombre:         data.nombre_display || data.nombre,
+    username:       data.username,
+    rol:            data.rol,
+    cliente_id:     data.cliente_id,
+    cliente_nombre: data.clientes?.nombre || null,
+    almacen_id:     data.almacen_id,
+    color:          data.color,
+  };
   saveUser(userObj);
   return userObj;
 }
@@ -58,7 +64,6 @@ function logout() {
   window.location.replace('login.html');
 }
 
-// ── Verificar permiso ─────────────────────────────────────
 function can(action) {
   const u = currentUser();
   if (!u) return false;
