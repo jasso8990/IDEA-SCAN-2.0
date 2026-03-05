@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — IDEA SCAN 2.0</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon32.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/utilities.css">
+  <link rel="stylesheet" href="src/css/pages/dashboard.css">
+  <style>
+  .alerta-row{display:flex;align-items:center;gap:8px;padding:10px 10px;border-radius:9px;cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:4px;}
+  .alerta-row:hover{background:rgba(249,115,22,.06);border-color:rgba(249,115,22,.2);}
+  .act-row:hover{background:rgba(249,115,22,.06);}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
+  <div class="main-content">
+
+    <!-- Header -->
+    <header class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="header-title">📊 <span>Dashboard</span></div>
+      <div class="header-actions">
+        <button class="header-btn" onclick="loadDashboard()" title="Actualizar">🔄</button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="page-body">
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card entrada">
+          <div class="kpi-label">Entradas Hoy</div>
+          <div class="kpi-value" id="kpiEntradas">—</div>
+          <div class="kpi-sub" id="kpiEntradasSub">Cargando...</div>
+        </div>
+        <div class="kpi-card sal">
+          <div class="kpi-label">Salidas Hoy</div>
+          <div class="kpi-value" id="kpiSalidas">—</div>
+          <div class="kpi-sub" id="kpiSalidasSub">Cargando...</div>
+        </div>
+        <div class="kpi-card inv">
+          <div class="kpi-label">SKUs Activos</div>
+          <div class="kpi-value" id="kpiSKUs">—</div>
+          <div class="kpi-sub">en inventario</div>
+        </div>
+        <div class="kpi-card pkg">
+          <div class="kpi-label">Bultos Totales</div>
+          <div class="kpi-value" id="kpiBultos">—</div>
+          <div class="kpi-sub">en almacén</div>
+        </div>
+      </div>
+
+      <!-- Two columns -->
+      <div class="two-col">
+
+        <!-- Actividad reciente -->
+        <div class="card">
+          <div class="card-header">
+            <span>⚡</span>
+            <span class="card-title">Actividad del Día</span>
+          </div>
+          <div class="card-body" id="actividadReciente">
+            <div class="empty-state">
+              <div class="empty-icon">📋</div>
+              <div class="empty-text">Cargando actividad...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas / Pendientes -->
+        <div class="card">
+          <div class="card-header">
+            <span>🔔</span>
+            <span class="card-title">Pendientes &amp; Alertas</span>
+            <span class="badge badge-danger" id="alertaCount" style="margin-left:auto;"></span>
+          </div>
+          <div class="card-body" id="alertasStock" style="padding:12px;">
+            <div class="empty-state">
+              <div class="empty-icon">✅</div>
+              <div class="empty-text">Cargando alertas...</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- /page-body -->
+
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav" id="bottomNav"></nav>
+<div class="toast" id="globalToast"></div>
+
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script src="src/js/pages/dashboard.js"></script>
+<script>
+  const user = requireAuth();
+  if (user) {
+    renderSidebar('dashboard');
+    renderBottomNav('dashboard');
+    loadDashboard();
+  }
+</script>
+</body>
+</html>
