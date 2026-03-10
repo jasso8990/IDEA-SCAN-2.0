@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paquetería — IDEA SCAN 2.0</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon32.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/utilities.css">
+  <style>
+    .vista { display:none; }
+    .vista.active { display:block; }
+
+    /* Ruta badge colors */
+    .ruta-calexico    { background:rgba(13,43,122,.1); color:var(--navy); }
+    .ruta-faa         { background:rgba(139,92,246,.1); color:#7c3aed; }
+    .ruta-internacional { background:rgba(245,158,11,.1); color:#d97706; }
+    .ruta-fdx, .ruta-fedex { background:rgba(249,115,22,.12); color:#ea6500; }
+    .ruta-ups         { background:rgba(34,199,122,.1); color:#16a34a; }
+    .ruta-dhl         { background:rgba(220,38,38,.1); color:#dc2626; }
+
+    /* Delivery card */
+    .delivery-card { background:white; border-radius:10px; border:1.5px solid var(--border); margin-bottom:6px; padding:10px 14px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all .15s; }
+    .delivery-card:hover { border-color:#f97316; }
+    .delivery-card.ok1   { border-left:4px solid #22c77a; }
+    .delivery-card.ok2   { border-left:4px solid var(--navy); background:rgba(13,43,122,.02); }
+    .delivery-card.alerta     { border-left:4px solid #ef4444; }
+    .delivery-card.en_proceso { border-left:4px solid #f97316; background:rgba(249,115,22,.03); }
+    .delivery-card.pendiente  { border-left:4px solid #94a3b8; }
+    .delivery-num { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--navy); }
+    .delivery-track { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-400); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px; }
+
+    /* Sección ruta group */
+    .ruta-group { margin-bottom:14px; }
+    .ruta-group-header { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; margin-bottom:6px; font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+    .ruta-badge { padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
+
+    /* Zona foto */
+    .foto-zone { border:2px dashed var(--border2); border-radius:12px; padding:20px; text-align:center; cursor:pointer; transition:all .2s; background:var(--surface); position:relative; overflow:hidden; margin-bottom:10px; }
+    .foto-zone:hover { border-color:#f97316; background:rgba(249,115,22,.04); }
+    .foto-zone.done  { border-color:#22c77a; border-style:solid; background:rgba(34,199,122,.04); }
+    .foto-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .foto-zone img.preview { width:100%; max-height:160px; object-fit:cover; border-radius:8px; margin-bottom:8px; }
+
+    /* Alerta mismatch */
+    .alerta-overlay { display:none; position:fixed; inset:0; z-index:9999; flex-direction:column; align-items:center; justify-content:center; gap:14px; backdrop-filter:blur(4px); }
+    .alerta-overlay.show { display:flex; }
+    .alerta-overlay.rojo { background:rgba(220,38,38,.96); }
+    .alerta-overlay.verde { background:rgba(22,163,74,.96); }
+
+    /* Scan counter */
+    .scan-kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+
+    /* Log header card */
+    .log-header-card { background:var(--navy); border-radius:12px; padding:14px 16px; margin-bottom:14px; color:white; }
+    .log-folio { font-family:'Exo 2',sans-serif; font-size:22px; font-weight:900; color:#f97316; }
+    .log-sello { font-family:'JetBrains Mono',monospace; font-size:13px; color:rgba(255,255,255,.7); margin-top:2px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+
+    <!-- ═══ HEADER ═══ -->
+    <header class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">🚚 <span>Paquetería</span></div>
+      <div class="header-actions">
+        <button class="btn btn-primary btn-sm" onclick="showVista('nuevo')">+ Nuevo Log</button>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════
+         VISTA 1 — LISTA DE SHIPPING LOGS
+    ═══════════════════════════════════════ -->
+    <div class="page-body vista active" id="vistaLista">
+      <div class="chip-row mb-12">
+        <div class="chip active" onclick="filtrarLogs('todos',this)">Todos</div>
+        <div class="chip" onclick="filtrarLogs('activo',this)">🟡 Activos</div>
+        <div class="chip" onclick="filtrarLogs('cerrado',this)">✅ Cerrados</div>
+      </div>
+      <div id="listaLogs">
+        <div class="empty-state"><div class="empty-icon">⏳</div></div>
+      </div>
+      <button class="fab" onclick="showVista('nuevo')">+</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         VISTA 2 — NUEVO LOG (foto del shipping log)
+    ═══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaNuevo">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <button class="btn btn-ghost btn-sm" onclick="showVista('lista')">← Volver</button>
+        <div style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:var(--navy);">Nuevo Shipping Log</div>
+      </div>
+
+      <div style="background:rgba(13,43,122,.06);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text-700);line-height:1.6;">
+        <b>📋 Instrucciones:</b><br>
+        1. Toma foto del <b>Shipping Log</b> o <b>Shipping Audit</b><br>
+        2. Si tiene más de una página, toma varias fotos<br>
+        3. La IA leerá todos los deliveries automáticamente
+      </div>
+
+      <!-- Fotos del shipping log -->
+      <div class="card mb-14">
+        <div class="card-header">
+          <div class="card-title">📄 Fotos del Shipping Log</div>
+          <span id="fotoLogCount" style="font-size:11px;color:var(--text-400);margin-left:auto;">0 fotos</span>
+        </div>
+        <div class="card-body">
+          <div id="fotoLogPreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:10px;"></div>
+          <label class="btn btn-primary" style="width:100%;justify-content:center;cursor:pointer;">
+            📷 Tomar foto del log
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoLog(event)" multiple>
+          </label>
+          <button class="btn btn-ghost" style="width:100%;margin-top:8px;" id="btnAnalizarLog" onclick="analizarShippingLog()" disabled>
+            🤖 Analizar con IA
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview de lo que detectó la IA -->
+      <div id="previewDetectado" style="display:none;">
+        <div class="log-header-card" id="previewHeader"></div>
+        <div id="previewDeliveries"></div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="btn btn-ghost" onclick="limpiarFotos()">🔄 Retomar fotos</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="guardarLog()">✅ Confirmar y Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         VISTA 3 — DETALLE DEL LOG + ESCANEO
+    ═══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaDetalle">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <button class="btn btn-ghost btn-sm" onclick="showVista('lista')">← Volver</button>
+        <div style="flex:1;min-width:0;">
+          <div id="detFolio" style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:var(--navy);"></div>
+          <div id="detSello" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f97316;"></div>
+        </div>
+        <button class="btn btn-sm" style="background:#22c77a;color:white;" onclick="exportarExcel()">📊 Excel</button>
+      </div>
+
+      <!-- KPIs -->
+      <div class="scan-kpi">
+        <div class="stat-box green"><div class="stat-num" id="kpiOK" style="color:#22c77a;">0</div><div class="stat-lbl">Confirmados</div></div>
+        <div class="stat-box red"><div class="stat-num" id="kpiPend" style="color:#f59e0b;">0</div><div class="stat-lbl">Pendientes</div></div>
+        <div class="stat-box"><div class="stat-num" id="kpiTotal">0</div><div class="stat-lbl">Total</div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;background:white;border-radius:10px;padding:4px;box-shadow:var(--shadow);margin-bottom:14px;gap:4px;">
+        <button class="btn btn-primary btn-sm" id="tabEnt" style="flex:1;" onclick="setTab('entrada')">📥 Entrada (1er scan)</button>
+        <button class="btn btn-ghost btn-sm" id="tabSal" style="flex:1;" onclick="setTab('salida')">📤 Salida (2do scan)</button>
+      </div>
+
+      <!-- Panel ENTRADA -->
+      <div id="panelEntrada">
+        <!-- Instrucción -->
+        <div style="background:rgba(13,43,122,.06);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text-700);">
+          📦 Toma foto del <b>label de la caja</b> — La IA verifica que el <b>Delivery</b> y <b>Tracking</b> coincidan
+        </div>
+        <!-- Deliveries pendientes de entrada -->
+        <div id="listaEntrada"></div>
+        <!-- Zona foto escaneo 1 -->
+        <div style="position:sticky;bottom:70px;background:white;border-radius:12px;box-shadow:var(--shadow-lg);padding:12px;margin-top:12px;border-top:3px solid #f97316;">
+          <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📷 Escanear Label (Entrada)</div>
+          <label class="btn btn-primary" style="width:100%;justify-content:center;cursor:pointer;padding:14px;font-size:15px;">
+            📷 Tomar foto del label
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="escanearEntrada(event)">
+          </label>
+        </div>
+      </div>
+
+      <!-- Panel SALIDA -->
+      <div id="panelSalida" style="display:none;">
+        <div style="background:rgba(249,115,22,.08);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text-700);">
+          🚚 Solo <b>FedEx / UPS / DHL</b> requieren segundo escaneo de salida.<br>
+          Toma foto de la caja — La IA detecta el Delivery Number.
+        </div>
+        <div id="listaSalida"></div>
+        <div style="position:sticky;bottom:70px;background:white;border-radius:12px;box-shadow:var(--shadow-lg);padding:12px;margin-top:12px;border-top:3px solid var(--navy);">
+          <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📷 Escanear Caja (Salida)</div>
+          <label class="btn btn-navy" style="width:100%;justify-content:center;cursor:pointer;padding:14px;font-size:15px;">
+            📷 Tomar foto (salida)
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="escanearSalida(event)">
+          </label>
+        </div>
+      </div>
+
+      <!-- Botón cerrar log -->
+      <div style="margin-top:16px;">
+        <button class="btn btn-ghost" style="width:100%;" onclick="cerrarLog()">
+          🏁 Cerrar este Log (aun con pendientes)
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         VISTA 4 — REPORTE FINAL
+    ═══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaReporte">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="showVista('lista')">← Volver</button>
+        <div style="flex:1;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:var(--navy);">Reporte Final</div>
+        <button class="btn btn-primary btn-sm" onclick="exportarExcel()">📊 Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️</button>
+      </div>
+      <div id="reporteContenido"></div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- ═══ ALERTA OVERLAY ═══ -->
+<div class="alerta-overlay rojo" id="alertaOverlay" onclick="cerrarAlerta()">
+  <div style="font-size:56px;" id="alertaIcon">⚠️</div>
+  <div style="font-family:'Exo 2',sans-serif;font-size:20px;font-weight:900;color:white;text-align:center;" id="alertaTitulo">NO COINCIDE</div>
+  <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:10px 20px;max-width:300px;text-align:center;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:white;margin-bottom:6px;" id="alertaDetalle"></div>
+    <div style="font-size:12px;color:rgba(255,255,255,.8);" id="alertaSub"></div>
+  </div>
+  <div style="color:rgba(255,255,255,.6);font-size:12px;">Toca para continuar</div>
+</div>
+
+<!-- AI overlay -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-spin"></div>
+  <div class="ai-ol-text" id="aiText">Procesando...</div>
+  <div class="ai-ol-sub" id="aiSub"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="globalToast"></div>
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<script src="src/js/core/camera.js"></script>
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script>
+'use strict';
+
+// ── Rutas que SOLO requieren 1 escaneo (entrada) ──────────────────────
+const RUTAS_SOLO_ENTRADA = ['calexico','faa','internacional','internal','inventario'];
+const RUTAS_CARRIER      = ['fdx','fedex','ups','dhl'];
+
+function rutaRequiereSalida(ruta){
+  const r=(ruta||'').toLowerCase().replace(/\s/g,'');
+  return RUTAS_CARRIER.some(c=>r.includes(c));
+}
+function rutaColor(ruta){
+  const r=(ruta||'').toLowerCase();
+  if(r.includes('calexico'))    return 'ruta-calexico';
+  if(r.includes('faa'))         return 'ruta-faa';
+  if(r.includes('internacional')||r.includes('international')) return 'ruta-internacional';
+  if(r.includes('fdx')||r.includes('fedex')) return 'ruta-fdx';
+  if(r.includes('ups'))         return 'ruta-ups';
+  if(r.includes('dhl'))         return 'ruta-dhl';
+  return 'badge-gray';
+}
+
+// ── ESTADO GLOBAL ────────────────────────────────────────────────────
+let _user, _clientes=[];
+let _logActual=null, _deliveriesActuales=[], _fotosLog=[], _fotosB64=[];
+let _logDetectado=null;  // resultado de la IA antes de guardar
+let _tabActual='entrada';
+let _filtroLogs='todos';
+
+// ── INIT ────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',async()=>{
+  _user=requireAuth();if(!_user)return;
+  renderSidebar('paqueteria');
+  renderBottomNav('paqueteria');
+  await cargarLogs();
+});
+
+function showVista(v){
+  document.querySelectorAll('.vista').forEach(e=>e.classList.remove('active'));
+  document.getElementById('vista'+v[0].toUpperCase()+v.slice(1))?.classList.add('active');
+  if(v==='lista') cargarLogs();
+  if(v==='nuevo') limpiarFotos();
+}
+
+// ── LISTA DE LOGS ────────────────────────────────────────────────────
+async function cargarLogs(){
+  const cont=document.getElementById('listaLogs');
+  cont.innerHTML='<div class="empty-state"><div class="empty-icon">⏳</div></div>';
+
+  let q=sb().from('shipping_logs').select('*,clientes(nombre)').order('created_at',{ascending:false});
+  if(_filtroLogs!=='todos') q=q.eq('estado',_filtroLogs);
+  const {data:logs}=await q;
+
+  if(!logs?.length){
+    cont.innerHTML='<div class="empty-state"><div class="empty-icon">🚚</div><div class="empty-text">Sin Shipping Logs</div><div style="font-size:12px;color:var(--text-300);margin-top:6px;">Crea uno nuevo con el botón +</div></div>';
+    return;
+  }
+
+  // Cargar conteos de deliveries
+  const {data:counts}=await sb().from('deliveries')
+    .select('shipping_log_id,estado')
+    .in('shipping_log_id',logs.map(l=>l.id));
+
+  cont.innerHTML=logs.map(l=>{
+    const dc=(counts||[]).filter(c=>c.shipping_log_id===l.id);
+    const total=dc.length;
+    const ok=dc.filter(c=>c.estado==='entrada_ok'||c.estado==='salida_ok').length;
+    const pct=total>0?Math.round(ok/total*100):0;
+    const fecha=l.created_at?new Date(l.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'}):'-';
+    return `
+    <div class="card mb-8" onclick="abrirLog('${l.id}')" style="cursor:pointer;border:1.5px solid var(--border);transition:all .15s;" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='var(--border)'">
+      <div class="card-body" style="padding:12px 14px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <div style="font-family:'Exo 2',sans-serif;font-size:16px;font-weight:900;color:var(--navy);">Folio ${l.folio||'—'}</div>
+              <span class="badge ${l.estado==='cerrado'?'badge-success':'badge-warning'}">${l.estado}</span>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#f97316;font-weight:700;">${l.sello||'Sin sello'}</div>
+            <div style="font-size:11px;color:var(--text-400);margin-top:3px;">${l.clientes?.nombre||''} · ${fecha} · ${l.consolidado||''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-family:'Exo 2',sans-serif;font-size:22px;font-weight:900;color:${pct===100?'#22c77a':'var(--navy)'};">${pct}%</div>
+            <div style="font-size:10px;color:var(--text-400);">${ok}/${total} deliveries</div>
+          </div>
+        </div>
+        <div class="progress-bar-wrap" style="margin-top:8px;height:5px;">
+          <div class="progress-bar-fill" style="width:${pct}%;background:${pct===100?'#22c77a':'linear-gradient(90deg,var(--navy),#f97316)'};"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filtrarLogs(f,el){
+  _filtroLogs=f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  cargarLogs();
+}
+
+// ── FOTOS DEL SHIPPING LOG ────────────────────────────────────────────
+async function agregarFotoLog(e){
+  const files=[...e.target.files]; if(!files.length)return;
+  e.target.value='';
+  for(const file of files){
+    const dataUrl=await fileToB64(file);
+    _fotosLog.push({file,dataUrl});
+    _fotosB64.push(await compressImage(dataUrl,'texto'));  // fotos del shipping log — necesita máxima calidad para leer texto
+  }
+  renderFotoLogPreview();
+  document.getElementById('btnAnalizarLog').disabled=false;
+}
+
+function renderFotoLogPreview(){
+  const cont=document.getElementById('fotoLogPreview');
+  cont.innerHTML=_fotosLog.map((f,i)=>`
+    <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:2px solid var(--border);">
+      <img src="${f.dataUrl}" style="width:100%;height:100%;object-fit:cover;">
+      <button onclick="quitarFoto(${i})" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:white;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>`).join('');
+  document.getElementById('fotoLogCount').textContent=_fotosLog.length+' fotos';
+}
+
+function quitarFoto(i){
+  _fotosLog.splice(i,1); _fotosB64.splice(i,1);
+  renderFotoLogPreview();
+  document.getElementById('btnAnalizarLog').disabled=!_fotosLog.length;
+}
+
+function limpiarFotos(){
+  _fotosLog=[]; _fotosB64=[];
+  renderFotoLogPreview();
+  document.getElementById('previewDetectado').style.display='none';
+  document.getElementById('btnAnalizarLog').disabled=true;
+}
+
+// ── ANALIZAR SHIPPING LOG CON IA ──────────────────────────────────────
+async function analizarShippingLog(){
+  if(!_fotosB64.length) return;
+  showAI('Leyendo Shipping Log...','La IA extrae todos los deliveries');
+
+  try{
+    // Si hay múltiples fotos, las procesamos en lotes de 2 y consolidamos
+    const LOTE=2;
+    let todosDeliveries=[], folio='', sello='', chofer='', economico='', consolidado='', fecha='';
+
+    for(let i=0;i<_fotosB64.length;i+=LOTE){
+      const lote=_fotosB64.slice(i,i+LOTE);
+      if(_fotosB64.length>1) document.getElementById('aiSub').textContent=`Página ${Math.floor(i/LOTE)+1} de ${Math.ceil(_fotosB64.length/LOTE)}`;
+
+      const content=lote.map(b64=>({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}}));
+      content.push({type:'text',text:`Analiza este Shipping Log o Shipping Audit de almacén de aviación.
+
+EXTRAE:
+1. CABECERA (si aparece):
+   - folio: número después de "Folio" (ej: 2435)
+   - sello: número después de "Sello" — formato UL-XXXXXXX
+   - chofer, economico, placas_usa, placas_mx, consolidado (ej: "23 cajas / 1 panel"), fecha
+
+2. DELIVERIES — Para cada fila de delivery extrae:
+   - ruta: el encabezado de sección al que pertenece (Calexico, FAA, Internacional, FDX, UPS, DHL, etc.)
+   - delivery: número de entrega (por lo general empieza con 800, ej: 800038139). También puede ser un número más corto como 80038090
+   - tracking_number: número de rastreo del carrier (largo, ej: 889324361528 o 1Z9R731F0325278897)
+   - tipo_bulto: Caja, Crate, Pallet, Box, etc.
+   - bultos: cantidad de bultos (número entero, si no aparece usa 1)
+   - cliente_nombre: nombre del cliente/empresa (opcional)
+
+IMPORTANTE:
+- Cada sección tiene un encabezado de ruta (Calexico, FAA, FDX, UPS, DHL, Internacional)
+- Los deliveries están bajo su sección correspondiente
+- Si no hay tracking_number visible deja vacío
+- Si no hay bultos usa 1
+
+Responde SOLO JSON puro:
+{
+  "folio": "",
+  "sello": "",
+  "chofer": "",
+  "economico": "",
+  "placas_usa": "",
+  "placas_mx": "",
+  "consolidado": "",
+  "fecha": "",
+  "deliveries": [
+    {
+      "ruta": "Calexico",
+      "delivery": "800038139",
+      "cliente_nombre": "SAFRAN ELECTRONICS",
+      "tipo_bulto": "Caja",
+      "bultos": 1,
+      "tracking_number": "889324361528"
+    }
+  ]
+}`});
+
+      const res=await fetch(ANTHROPIC_PROXY,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content}]})
+      });
+      const json=await res.json();
+      if(json.error)throw new Error(json.error.message);
+      let d={};
+      try{d=JSON.parse((json.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());}catch(ex){}
+
+      // Acumular
+      if(d.folio&&!folio) folio=d.folio;
+      if(d.sello&&!sello) sello=d.sello;
+      if(d.chofer&&!chofer) chofer=d.chofer;
+      if(d.economico&&!economico) economico=d.economico;
+      if(d.consolidado&&!consolidado) consolidado=d.consolidado;
+      if(d.fecha&&!fecha) fecha=d.fecha;
+      if(d.deliveries?.length) todosDeliveries.push(...d.deliveries);
+    }
+
+    // Deduplicar por delivery number
+    const seen=new Set();
+    const deliveriesUnicos=todosDeliveries.filter(d=>{
+      const key=String(d.delivery).trim();
+      if(!key||seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+
+    _logDetectado={folio,sello,chofer,economico,placas_usa:'',placas_mx:'',consolidado,fecha,deliveries:deliveriesUnicos};
+    hideAI();
+    mostrarPreviewDetectado();
+
+  }catch(err){hideAI();showToast('Error IA: '+err.message,'error');}
+}
+
+function mostrarPreviewDetectado(){
+  const d=_logDetectado;
+  if(!d) return;
+
+  document.getElementById('previewHeader').innerHTML=`
+    <div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Shipping Log detectado</div>
+    <div class="log-folio">Folio ${d.folio||'—'}</div>
+    <div class="log-sello">${d.sello||'Sin sello'} &nbsp;·&nbsp; ${d.fecha||''}</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;">${d.chofer||''} ${d.consolidado?'· '+d.consolidado:''}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:6px 12px;text-align:center;flex:1;">
+        <div style="font-size:18px;font-weight:900;">${d.deliveries?.length||0}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);">Deliveries</div>
+      </div>
+      <div style="background:rgba(249,115,22,.2);border-radius:8px;padding:6px 12px;text-align:center;flex:1;">
+        <div style="font-size:18px;font-weight:900;color:#f97316;">${(d.deliveries||[]).filter(r=>rutaRequiereSalida(r.ruta)).length}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);">Con carrier</div>
+      </div>
+      <div style="background:rgba(34,199,122,.2);border-radius:8px;padding:6px 12px;text-align:center;flex:1;">
+        <div style="font-size:18px;font-weight:900;color:#22c77a;">${(d.deliveries||[]).filter(r=>!rutaRequiereSalida(r.ruta)).length}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);">Solo entrada</div>
+      </div>
+    </div>`;
+
+  // Agrupar por ruta
+  const porRuta={};
+  (d.deliveries||[]).forEach(del=>{
+    const r=del.ruta||'Sin ruta';
+    if(!porRuta[r]) porRuta[r]=[];
+    porRuta[r].push(del);
+  });
+
+  let html='';
+  Object.entries(porRuta).forEach(([ruta,dels])=>{
+    const carrier=rutaRequiereSalida(ruta);
+    html+=`<div class="ruta-group">
+      <div class="ruta-group-header ${rutaColor(ruta)}">
+        <span>${carrier?'🚚':'📦'} ${ruta}</span>
+        <span class="ruta-badge ${rutaColor(ruta)}">${dels.length} pkgs</span>
+        <span style="font-size:9px;opacity:.7;margin-left:auto;">${carrier?'FedEx/UPS/DHL → 2 escaneos':'Solo verificación entrada'}</span>
+      </div>
+      ${dels.map(del=>`
+        <div style="background:white;border-radius:8px;border:1px solid var(--border);padding:10px 12px;margin-bottom:5px;display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;color:var(--navy);">${del.delivery||'?'}</div>
+            <div style="font-size:10px;color:var(--text-400);margin-top:1px;">${del.cliente_nombre||''}</div>
+            ${del.tracking_number?`<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-300);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${del.tracking_number}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:11px;font-weight:700;color:var(--navy);">${del.bultos||1} bulto${(del.bultos||1)>1?'s':''}</div>
+            <div style="font-size:10px;color:var(--text-400);">${del.tipo_bulto||'Caja'}</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  });
+
+  document.getElementById('previewDeliveries').innerHTML=html;
+  document.getElementById('previewDetectado').style.display='block';
+}
+
+// ── GUARDAR LOG ───────────────────────────────────────────────────────
+async function guardarLog(){
+  if(!_logDetectado||!_logDetectado.deliveries?.length){showToast('No hay deliveries detectados','error');return;}
+  showAI('Guardando en base de datos...','');
+
+  try{
+    // Subir fotos del log al storage
+    const fotoUrls=[];
+    for(let i=0;i<_fotosLog.length;i++){
+      const p=`shipping_logs/${Date.now()}_${i}.jpg`;
+      await sb().storage.from('imagenes').upload(p,_fotosLog[i].file,{upsert:true});
+      const {data:u}=sb().storage.from('imagenes').getPublicUrl(p);
+      if(u?.publicUrl) fotoUrls.push(u.publicUrl);
+    }
+
+    // Crear el shipping log
+    const {data:log,error:le}=await sb().from('shipping_logs').insert({
+      folio:_logDetectado.folio||null,
+      sello:_logDetectado.sello||null,
+      fecha:_logDetectado.fecha||null,
+      chofer:_logDetectado.chofer||null,
+      economico:_logDetectado.economico||null,
+      placas_usa:_logDetectado.placas_usa||null,
+      placas_mx:_logDetectado.placas_mx||null,
+      consolidado:_logDetectado.consolidado||null,
+      operador_id:_user.id,
+      fotos_log:fotoUrls,
+      estado:'activo'
+    }).select('id').single();
+    if(le) throw le;
+
+    // Insertar deliveries
+    const rows=_logDetectado.deliveries.map(d=>({
+      shipping_log_id:log.id,
+      delivery:String(d.delivery||'').trim(),
+      cliente_nombre:d.cliente_nombre||null,
+      tracking_number:d.tracking_number||null,
+      tipo_bulto:d.tipo_bulto||'Caja',
+      bultos:parseInt(d.bultos)||1,
+      ruta:d.ruta||null,
+      requiere_salida:rutaRequiereSalida(d.ruta),
+      estado:'pendiente'
+    }));
+    const {error:de}=await sb().from('deliveries').insert(rows);
+    if(de) throw de;
+
+    hideAI();
+    showToast(`✅ Log guardado — ${rows.length} deliveries`,'success');
+    limpiarFotos();
+    await abrirLog(log.id);
+
+  }catch(err){hideAI();showToast('Error: '+err.message,'error');}
+}
+
+// ── ABRIR LOG PARA ESCANEAR ───────────────────────────────────────────
+async function abrirLog(id){
+  showAI('Cargando log...','');
+  const {data:log}=await sb().from('shipping_logs').select('*').eq('id',id).single();
+  const {data:dels}=await sb().from('deliveries').select('*').eq('shipping_log_id',id).order('ruta').order('delivery');
+  hideAI();
+  if(!log) return;
+
+  _logActual=log;
+  _deliveriesActuales=dels||[];
+  _tabActual='entrada';
+  _bultosEscaneados={};  // reset contador de bultos
+
+  document.getElementById('detFolio').textContent=`Folio ${log.folio||'—'}`;
+  document.getElementById('detSello').textContent=log.sello||'Sin sello';
+
+  renderDetalle();
+  setTab('entrada');
+  showVista('detalle');
+}
+
+function renderDetalle(){
+  const dels=_deliveriesActuales;
+  const ok=dels.filter(d=>d.estado==='entrada_ok'||d.estado==='salida_ok').length;
+  const pend=dels.filter(d=>d.estado==='pendiente').length;
+  document.getElementById('kpiOK').textContent=ok;
+  document.getElementById('kpiPend').textContent=pend;
+  document.getElementById('kpiTotal').textContent=dels.length;
+  renderListaEntrada();
+  renderListaSalida();
+}
+
+function setTab(t){
+  _tabActual=t;
+  const isEnt=t==='entrada';
+  document.getElementById('panelEntrada').style.display=isEnt?'block':'none';
+  document.getElementById('panelSalida').style.display=isEnt?'none':'block';
+  document.getElementById('tabEnt').className=isEnt?'btn btn-primary btn-sm':'btn btn-ghost btn-sm';
+  document.getElementById('tabSal').className=isEnt?'btn btn-ghost btn-sm':'btn btn-primary btn-sm';
+  if(isEnt) document.getElementById('tabEnt').style.flex='1';
+  document.getElementById('tabSal').style.flex='1';
+}
+
+function renderListaEntrada(){
+  const dels=_deliveriesActuales;
+  // Agrupar por ruta
+  const porRuta={};
+  dels.forEach(d=>{const r=d.ruta||'Sin ruta';if(!porRuta[r])porRuta[r]=[];porRuta[r].push(d);});
+
+  let html='';
+  Object.entries(porRuta).forEach(([ruta,list])=>{
+    html+=`<div class="ruta-group">
+      <div class="ruta-group-header ${rutaColor(ruta)}" style="font-size:11px;">
+        ${ruta} <span class="ruta-badge ${rutaColor(ruta)}">${list.filter(d=>d.estado!=='pendiente').length}/${list.length}</span>
+      </div>
+      ${list.map(d=>{
+        const est=d.estado;
+        const ok=est==='entrada_ok'||est==='salida_ok';
+        const alerta=d.scan1_alerta;
+        const fotosTomadas=(_bultosEscaneados[d.id]||[]).length;
+        const bultosTotal=d.bultos||1;
+        const enProgreso=!ok&&fotosTomadas>0;
+        return `<div class="delivery-card ${ok?'ok1':alerta?'alerta':enProgreso?'en_proceso':'pendiente'}">
+          <div style="font-size:18px;">${ok?'✅':alerta?'⚠️':enProgreso?'📷':'⬜'}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="delivery-num">${d.delivery}</div>
+            <div class="delivery-track">${d.tracking_number||'Sin tracking'}</div>
+            ${alerta?`<div style="font-size:10px;color:#dc2626;margin-top:2px;">⚠️ ${alerta}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:11px;font-weight:700;color:${ok?'#22c77a':enProgreso?'#f97316':'var(--navy)'};">
+              ${ok?bultosTotal:fotosTomadas}/${bultosTotal} bt
+            </div>
+            <div style="font-size:10px;color:var(--text-400);">${d.tipo_bulto||'Caja'}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  document.getElementById('listaEntrada').innerHTML=html;
+}
+
+function renderListaSalida(){
+  const carrier=_deliveriesActuales.filter(d=>d.requiere_salida);
+  if(!carrier.length){
+    document.getElementById('listaSalida').innerHTML='<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">Sin deliveries con carrier</div><div style="font-size:12px;color:var(--text-300);margin-top:4px;">Los deliveries FedEx/UPS/DHL aparecerán aquí</div></div>';
+    return;
+  }
+
+  const porRuta={};
+  carrier.forEach(d=>{const r=d.ruta||'Carrier';if(!porRuta[r])porRuta[r]=[];porRuta[r].push(d);});
+
+  let html='';
+  Object.entries(porRuta).forEach(([ruta,list])=>{
+    html+=`<div class="ruta-group">
+      <div class="ruta-group-header ${rutaColor(ruta)}" style="font-size:11px;">
+        🚚 ${ruta} <span class="ruta-badge ${rutaColor(ruta)}">${list.filter(d=>d.estado==='salida_ok').length}/${list.length}</span>
+      </div>
+      ${list.map(d=>{
+        const ok=d.estado==='salida_ok';
+        const ent=d.estado==='entrada_ok';
+        return `<div class="delivery-card ${ok?'ok2':ent?'ok1':'pendiente'}">
+          <div style="font-size:18px;">${ok?'✅':ent?'📥':'⬜'}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="delivery-num">${d.delivery}</div>
+            <div class="delivery-track">${d.tracking_number||'—'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:11px;font-weight:700;">${d.bultos} bt</div>
+            <div style="font-size:10px;color:var(--text-400);">${ok?'✅ Salida OK':ent?'⏳ Esperando salida':'Pendiente entrada'}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  document.getElementById('listaSalida').innerHTML=html;
+}
+
+// ── ESCANEO 1: ENTRADA (soporta múltiples bultos) ────────────────────
+// _bultosEscaneados: {deliveryId: count_fotos_tomadas}
+let _bultosEscaneados = {};
+
+
+// ── WRAPPERS input → procesar ─────────────────────────────────────────
+async function escanearEntrada(e){
+  const file=e.target.files[0]; if(!file)return; e.target.value='';
+  const dataUrl=await fileToB64(file);
+  await procesarEscaneoEntrada(dataUrl);
+}
+async function escanearSalida(e){
+  const file=e.target.files[0]; if(!file)return; e.target.value='';
+  const dataUrl=await fileToB64(file);
+  await procesarEscaneoSalida(dataUrl);
+}
+async function procesarEscaneoEntrada(dataUrl){
+  showAI('Leyendo label de entrada...','La IA verifica Delivery y Tracking');
+
+  try{
+    const b64=await compressImage(dataUrl,'texto');  // label de caja
+
+    const res=await fetch(ANTHROPIC_PROXY,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',max_tokens:500,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+          {type:'text',text:`Analiza el label de esta caja de paquetería (puede tener label del delivery Y label del carrier en la misma imagen).
+
+EXTRAE:
+- delivery_number: número que empieza con 800 (ej: 800038139, 80038080) — es el número de entrega interno
+- tracking_number: número de rastreo del carrier — largo (ej: 889324361528 o 1Z9R731F0325278897)
+- carrier: FedEx, UPS, DHL u otro
+
+Responde SOLO JSON:
+{"delivery_number":"","tracking_number":"","carrier":""}`}
+        ]}]
+      })
+    });
+    const json=await res.json();
+    if(json.error)throw new Error(json.error.message);
+    let d={};
+    try{d=JSON.parse((json.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());}catch(ex){}
+
+    // Subir foto
+    let fotoUrl='';
+    try{
+      const blob=await (await fetch(dataUrl)).blob();
+      const file=new File([blob],`entrada_${Date.now()}.jpg`,{type:'image/jpeg'});
+      const p=`deliveries/entrada_${Date.now()}.jpg`;
+      await sb().storage.from('imagenes').upload(p,file,{upsert:true});
+      const {data:u}=sb().storage.from('imagenes').getPublicUrl(p);
+      fotoUrl=u?.publicUrl||'';
+    }catch(ex){}
+
+    // Buscar delivery
+    const delivery=_deliveriesActuales.find(del=>{
+      const delNum=String(del.delivery||'').trim();
+      const detected=String(d.delivery_number||'').trim();
+      return delNum===detected||delNum.endsWith(detected)||detected.endsWith(delNum);
+    });
+
+    if(!delivery){
+      hideAI();
+      mostrarAlerta('rojo','⚠️','DELIVERY NO ENCONTRADO',
+        `Detectado: ${d.delivery_number||'No se detectó'}`,
+        'Verifica que el label del delivery (800...) sea visible en la foto');
+      return;
+    }
+
+    // Contar cuántas fotos se han tomado ya de este delivery
+    if(!_bultosEscaneados[delivery.id]) _bultosEscaneados[delivery.id]=[];
+    _bultosEscaneados[delivery.id].push(fotoUrl);
+    const fotosTomadas=_bultosEscaneados[delivery.id].length;
+    const bultosEsperados=delivery.bultos||1;
+
+    // Verificar tracking
+    const trackLog=(delivery.tracking_number||'').replace(/\s/g,'').toUpperCase();
+    const trackScan=(d.tracking_number||'').replace(/\s/g,'').toUpperCase();
+    const trackingOk=!trackLog||!trackScan||trackLog===trackScan||trackLog.includes(trackScan)||trackScan.includes(trackLog);
+    const alerta=trackingOk?null:`Tracking del label: ${d.tracking_number||'—'} ≠ Log: ${delivery.tracking_number||'—'}`;
+
+    // ¿Ya se tomaron todas las fotos de los bultos?
+    const todosBultosOk = fotosTomadas >= bultosEsperados;
+
+    if(todosBultosOk){
+      // Marcar como entrada confirmada
+      await sb().from('deliveries').update({
+        scan1_confirmado:true,
+        scan1_foto_url:fotoUrl,
+        scan1_tracking_ok:trackingOk,
+        scan1_alerta:alerta,
+        scan1_at:new Date().toISOString(),
+        scan1_operador_id:_user.id,
+        estado:'entrada_ok'
+      }).eq('id',delivery.id);
+
+      delivery.scan1_confirmado=true;
+      delivery.scan1_tracking_ok=trackingOk;
+      delivery.scan1_alerta=alerta;
+      delivery.estado='entrada_ok';
+    }
+
+    hideAI();
+    renderDetalle();
+
+    if(!trackingOk){
+      mostrarAlerta('rojo','⚠️','TRACKING NO COINCIDE',
+        `Label: ${d.tracking_number||'—'}  ≠  Log: ${delivery.tracking_number||'—'}`,
+        `Delivery ${delivery.delivery} registrado — verifica físicamente`);
+    } else if(!todosBultosOk){
+      // Faltan bultos por escanear
+      const faltan=bultosEsperados-fotosTomadas;
+      mostrarAlerta('verde','📦',`BULTO ${fotosTomadas}/${bultosEsperados} OK`,
+        `Delivery: ${delivery.delivery}`,
+        `Faltan ${faltan} bulto${faltan>1?'s':''} por fotografiar`);
+    } else {
+      mostrarAlerta('verde','✅','ENTRADA CONFIRMADA',
+        `Delivery: ${delivery.delivery}`,
+        `${bultosEsperados} bulto${bultosEsperados>1?'s':''} verificado${bultosEsperados>1?'s':''} · Tracking OK`);
+    }
+
+  }catch(err){hideAI();showToast('Error IA: '+err.message,'error');}
+}
+
+// ── ESCANEO 2: SALIDA ─────────────────────────────────────────────────
+async function procesarEscaneoSalida(dataUrl){
+  showAI('Leyendo delivery de salida...','');
+
+  try{
+    const b64=await compressImage(dataUrl,'texto');  // label salida
+
+    const res=await fetch(ANTHROPIC_PROXY,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',max_tokens:200,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+          {type:'text',text:`Lee el número de delivery en esta imagen. El delivery empieza con 800 (ej: 800038139, 80038080).
+Responde SOLO JSON: {"delivery_number":""}`}
+        ]}]
+      })
+    });
+    const json=await res.json();
+    let d={};
+    try{d=JSON.parse((json.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());}catch(ex){}
+
+    let fotoUrl='';
+    try{
+      const blob=await (await fetch(dataUrl)).blob();
+      const file=new File([blob],`salida_${Date.now()}.jpg`,{type:'image/jpeg'});
+      const p=`deliveries/salida_${Date.now()}.jpg`;
+      await sb().storage.from('imagenes').upload(p,file,{upsert:true});
+      const {data:u}=sb().storage.from('imagenes').getPublicUrl(p);
+      fotoUrl=u?.publicUrl||'';
+    }catch(ex){}
+
+    const delivery=_deliveriesActuales.find(del=>{
+      if(!del.requiere_salida) return false;
+      const delNum=String(del.delivery||'').trim();
+      const detected=String(d.delivery_number||'').trim();
+      return delNum===detected||delNum.endsWith(detected)||detected.endsWith(delNum);
+    });
+
+    if(!delivery){
+      hideAI();
+      mostrarAlerta('rojo','⚠️','DELIVERY NO ENCONTRADO',
+        `Detectado: ${d.delivery_number||'—'}`,
+        'No está en la lista de carrier de este log');
+      return;
+    }
+
+    await sb().from('deliveries').update({
+      scan2_confirmado:true,
+      scan2_foto_url:fotoUrl,
+      scan2_delivery_ok:true,
+      scan2_at:new Date().toISOString(),
+      scan2_operador_id:_user.id,
+      estado:'salida_ok'
+    }).eq('id',delivery.id);
+
+    delivery.scan2_confirmado=true;
+    delivery.estado='salida_ok';
+
+    hideAI();
+    renderDetalle();
+    mostrarAlerta('verde','✅','SALIDA CONFIRMADA',
+      `Delivery: ${delivery.delivery}`,
+      `Entregado a ${delivery.ruta}`);
+
+  }catch(err){hideAI();showToast('Error: '+err.message,'error');}
+}
+
+// ── CERRAR LOG ────────────────────────────────────────────────────────
+async function cerrarLog(){
+  if(!_logActual) return;
+  const pend=_deliveriesActuales.filter(d=>d.estado==='pendiente').length;
+  const msg=pend>0
+    ?`Hay ${pend} delivery${pend>1?'s':''} sin confirmar. ¿Cerrar el log de todas formas?`
+    :'¿Cerrar este Shipping Log?';
+  if(!confirm(msg)) return;
+
+  await sb().from('shipping_logs').update({estado:'cerrado'}).eq('id',_logActual.id);
+  await sb().from('deliveries').update({estado:'no_confirmado'}).eq('shipping_log_id',_logActual.id).eq('estado','pendiente');
+
+  showToast('Log cerrado','success');
+  await generarReporte(_logActual.id);
+  showVista('reporte');
+}
+
+// ── EXPORTAR EXCEL ────────────────────────────────────────────────────
+async function exportarExcel(){
+  if(!_logActual) return;
+  const log=_logActual;
+  const dels=_deliveriesActuales;
+
+  const wb=XLSX.utils.book_new();
+
+  // Hoja 1: Todos los deliveries
+  const rows=[['Delivery','Cliente','Ruta','Tipo Bulto','Bultos','Tracking Number','Carrier','Estado Entrada','Estado Salida','Alerta','Hora Entrada','Hora Salida']];
+  dels.forEach(d=>rows.push([
+    d.delivery, d.cliente_nombre||'', d.ruta||'', d.tipo_bulto||'Caja', d.bultos||1,
+    d.tracking_number||'',
+    d.requiere_salida?'FedEx/UPS/DHL':'Interno',
+    d.scan1_confirmado?'✅ Confirmado':'❌ Pendiente',
+    d.requiere_salida?(d.scan2_confirmado?'✅ Confirmado':'❌ Pendiente'):'N/A',
+    d.scan1_alerta||'',
+    d.scan1_at?new Date(d.scan1_at).toLocaleString('es-MX'):'',
+    d.scan2_at?new Date(d.scan2_at).toLocaleString('es-MX'):''
+  ]));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:30},{wch:14},{wch:10},{wch:7},{wch:22},{wch:14},{wch:16},{wch:16},{wch:30},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,'Todos los Deliveries',ws);
+
+  // Hoja 2: Sin confirmar (para imprimir)
+  const pendientes=dels.filter(d=>d.estado==='pendiente'||d.estado==='no_confirmado');
+  if(pendientes.length){
+    const r2=[['⚠️ DELIVERIES NO CONFIRMADOS — Folio '+log.folio],[''],
+      ['Delivery','Ruta','Tracking','Bultos','Observaciones']];
+    pendientes.forEach(d=>r2.push([d.delivery,d.ruta||'',d.tracking_number||'',d.bultos||1,'NO CONFIRMADO']));
+    const ws2=XLSX.utils.aoa_to_sheet(r2);
+    ws2['!cols']=[{wch:12},{wch:14},{wch:22},{wch:8},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,'No Confirmados',ws2);
+  }
+
+  const fecha=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+  XLSX.writeFile(wb,`ShippingLog_Folio${log.folio||''}_${fecha}.xlsx`);
+  showToast('📊 Excel descargado','success');
+}
+
+// ── REPORTE ────────────────────────────────────────────────────────────
+async function generarReporte(logId){
+  const {data:log}=await sb().from('shipping_logs').select('*').eq('id',logId).single();
+  const {data:dels}=await sb().from('deliveries').select('*').eq('shipping_log_id',logId).order('ruta');
+  _logActual=log; _deliveriesActuales=dels||[];
+
+  const ok=dels.filter(d=>d.estado!=='pendiente'&&d.estado!=='no_confirmado').length;
+  const nok=dels.filter(d=>d.estado==='pendiente'||d.estado==='no_confirmado').length;
+  const pct=dels.length>0?Math.round(ok/dels.length*100):0;
+
+  const porRuta={};
+  (dels||[]).forEach(d=>{const r=d.ruta||'Sin ruta';if(!porRuta[r])porRuta[r]=[];porRuta[r].push(d);});
+
+  document.getElementById('reporteContenido').innerHTML=`
+    <div style="background:var(--navy);border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;">Reporte Shipping Log</div>
+      <div style="font-family:'Exo 2',sans-serif;font-size:22px;font-weight:900;color:#f97316;">Folio ${log?.folio||'—'}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.6);margin-top:2px;">${log?.sello||''} · ${log?.fecha||''}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;text-align:center;">
+        <div><div style="font-size:22px;font-weight:900;color:#22c77a;">${ok}</div><div style="font-size:10px;color:rgba(255,255,255,.5);">Confirmados</div></div>
+        <div><div style="font-size:22px;font-weight:900;color:#ef4444;">${nok}</div><div style="font-size:10px;color:rgba(255,255,255,.5);">No confirmados</div></div>
+        <div><div style="font-size:22px;font-weight:900;">${pct}%</div><div style="font-size:10px;color:rgba(255,255,255,.5);">Completado</div></div>
+      </div>
+    </div>
+    ${Object.entries(porRuta).map(([ruta,list])=>`
+      <div style="margin-bottom:14px;">
+        <div class="ruta-group-header ${rutaColor(ruta)}" style="margin-bottom:6px;border-radius:8px;padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">
+          ${ruta} — ${list.filter(d=>d.estado!=='pendiente').length}/${list.length} confirmados
+        </div>
+        <div class="table-wrap">
+          <table style="width:100%;border-collapse:collapse;font-size:11px;background:white;">
+            <thead><tr style="background:var(--navy);">
+              <th style="color:white;padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;">Delivery</th>
+              <th style="color:white;padding:7px 10px;text-align:left;font-size:9px;text-transform:uppercase;">Tracking</th>
+              <th style="color:white;padding:7px 10px;text-align:center;font-size:9px;text-transform:uppercase;">Bultos</th>
+              <th style="color:white;padding:7px 10px;text-align:center;font-size:9px;text-transform:uppercase;">Entrada</th>
+              ${rutaRequiereSalida(ruta)?'<th style="color:white;padding:7px 10px;text-align:center;font-size:9px;text-transform:uppercase;">Salida</th>':''}
+            </tr></thead>
+            <tbody>
+              ${list.map(d=>{
+                const entOk=d.scan1_confirmado;
+                const salOk=d.scan2_confirmado;
+                const nconf=d.estado==='no_confirmado'||d.estado==='pendiente';
+                return `<tr style="border-bottom:1px solid var(--border);${nconf?'background:rgba(239,68,68,.04);':''}">
+                  <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--navy);">${d.delivery}${d.scan1_alerta?'<span style="color:#ef4444;margin-left:4px;">⚠️</span>':''}</td>
+                  <td style="padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-400);">${(d.tracking_number||'').slice(0,18)}</td>
+                  <td style="padding:7px 10px;text-align:center;font-weight:700;">${d.bultos||1}</td>
+                  <td style="padding:7px 10px;text-align:center;">${entOk?'✅':'❌'}</td>
+                  ${rutaRequiereSalida(ruta)?`<td style="padding:7px 10px;text-align:center;">${salOk?'✅':'❌'}</td>`:''}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`).join('')}
+    ${nok>0?`
+      <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;margin-top:10px;">
+        <div style="font-weight:800;color:#dc2626;margin-bottom:8px;font-size:13px;">❌ Deliveries NO Confirmados (${nok})</div>
+        ${dels.filter(d=>d.estado==='pendiente'||d.estado==='no_confirmado').map(d=>`
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#dc2626;padding:4px 0;border-bottom:1px solid rgba(239,68,68,.1);">${d.delivery} — ${d.ruta||''}</div>`).join('')}
+        <div style="font-size:11px;color:var(--text-400);margin-top:8px;">Estos deliveries deben ser revisados manualmente</div>
+      </div>`:''}`;
+}
+
+// ── ALERTAS ────────────────────────────────────────────────────────────
+function mostrarAlerta(tipo,icon,titulo,detalle,sub){
+  const o=document.getElementById('alertaOverlay');
+  o.className='alerta-overlay show '+tipo;
+  document.getElementById('alertaIcon').textContent=icon;
+  document.getElementById('alertaTitulo').textContent=titulo;
+  document.getElementById('alertaDetalle').textContent=detalle;
+  document.getElementById('alertaSub').textContent=sub||'';
+  setTimeout(()=>o.classList.remove('show'),tipo==='verde'?2000:5000);
+}
+function cerrarAlerta(){document.getElementById('alertaOverlay').classList.remove('show');}
+
+// ── HELPERS ─────────────────────────────────────────────────────────────
+// ── Compresión de imagen con 3 modos ────────────────────────────────
+// modo 'texto'  → máx 2048px, calidad 0.92 — para leer etiquetas/documentos
+// modo 'normal' → máx 1280px, calidad 0.82 — para fotos de inventario  
+// modo 'thumb'  → máx 800px,  calidad 0.70 — para miniaturas/previews
+function compressImage(dataUrl, modo='texto') {
+  const configs = {
+    texto:  { maxW: 2048, q: 0.92 },
+    normal: { maxW: 1280, q: 0.82 },
+    thumb:  { maxW: 800,  q: 0.70 }
+  };
+  const { maxW, q } = configs[modo] || configs.texto;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      if (h > maxW) { w = Math.round(w * maxW / h); h = maxW; }
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', q).split(',')[1]);
+    };
+    img.src = dataUrl;
+  });
+}
+function fileToB64(file){
+  return new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(file);});
+}
+function showAI(t,s){
+  document.getElementById('aiOverlay').classList.add('show');
+  document.getElementById('aiText').textContent=t;
+  document.getElementById('aiSub').textContent=s||'';
+}
+function hideAI(){document.getElementById('aiOverlay').classList.remove('show');}
+</script>
+</body>
+</html>
