@@ -118,10 +118,11 @@
         <button class="modal-close" onclick="cerrarDetalle()">✕</button>
       </div>
     </div>
-    <div class="det-tabs">
-      <button class="det-tab active" onclick="detTab('info')">📋 Información</button>
-      <button class="det-tab" onclick="detTab('imagenes')">📷 Fotos</button>
-      <!-- LABELS_TAB_HIDDEN: <button class="det-tab" onclick="detTab('labels')">🏷️ Labels</button> -->
+    <div class="det-tabs" id="detTabsBar">
+      <button class="det-tab active" onclick="detTab('info')" id="tabInfo">📋 Información</button>
+      <button class="det-tab" onclick="detTab('imagenes')" id="tabFotos">📷 Fotos</button>
+      <button class="btn btn-primary btn-sm" id="btnVerInfo" onclick="abrirInfoSafran()" style="display:none;margin-left:auto;">ℹ️ Información</button>
+      <button class="btn btn-navy btn-sm" id="btnMasFotos" onclick="abrirMasFotos()" style="display:none;margin-left:auto;">📷 Más fotos</button>
     </div>
 
     <!-- INFO -->
@@ -166,6 +167,24 @@
       </div>
       <div id="uploadProgress" style="display:none;background:rgba(13,43,122,.08);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-weight:600;color:var(--navy);">
         ⏳ Subiendo fotos... <span id="uploadProgressText"></span>
+      </div>
+      <!-- Fotos packing (Martech/Cooper) -->
+      <div id="packingFotosSection" style="display:none;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">📦 Packing / Documentos</div>
+        <div id="packingFotosGallery" class="img-gallery"></div>
+      </div>
+      <!-- Excel / Reporte (Martech/Cooper) -->
+      <div id="excelPreviewSection" style="display:none;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;">📄 Reporte</div>
+          <a id="excelDownloadBtn" href="#" download style="font-size:12px;color:var(--orange,#f97316);font-weight:600;text-decoration:none;">⬇️ Descargar .xlsx</a>
+        </div>
+        <div id="excelTableContainer" style="overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb;font-size:12px;"></div>
+      </div>
+      <!-- Foto packing Safran (primera imagen) -->
+      <div id="safranPackingSection" style="display:none;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">📦 Foto del Packing</div>
+        <div id="safranPackingImg" style="border-radius:10px;overflow:hidden;max-height:340px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;cursor:pointer;" onclick="abrirLightbox(this.dataset.url)"></div>
       </div>
       <div class="img-gallery" id="imgGallery"></div>
     </div>
@@ -280,15 +299,35 @@ function renderTabla() {
 
 /* ── DETALLE ── */
 async function abrirDetalle(id) {
-  const item = _items.find(i=>i.id===id); if(!item) return;
+  const {data:item,error} = await sb().from('inventario').select(`
+    id,sku,numero_parte,descripcion,cliente_id,cantidad,bultos,
+    carrier,vendor,tracking_number,po,serial_number,origin,
+    area,ubicacion,fecha_entrada,folio_entrada,activo,estado,
+    imagenes,part_model,peso,peso_total,tipo_bulto,partes,
+    clientes:cliente_id(nombre,codigo)
+  `).eq('id',id).single();
+  if(error||!item){showToast('Error al cargar SKU','error');return;}
   _detalle = item;
-  const puedeEditar = PUEDE_EDITAR(_user);
-  document.getElementById('btnEditarSKU').style.display = puedeEditar?'inline-flex':'none';  document.getElementById('btnEliminarSKU').style.display = puedeEditar?'inline-flex':'none';
-  document.getElementById('labelActions').style.display  = 'none'; // LABELS_HIDDEN — era: puedeEditar?'flex':'none'
-  document.getElementById('detSku').textContent         = item.sku||'—';
-  document.getElementById('detEstadoBadge').textContent = item.activo!==false?'📦 En Almacén':'📤 Salida';
 
-  const tipoBultoIcon = {caja:'📦',crate:'🪵',tarima:'🏗️',sobre:'✉️',tubo:'🔧',bulto:'🎒',otro:'📫'};
+  const puedeEditar = PUEDE_EDITAR(_user);
+  document.getElementById('btnEditarSKU').style.display = puedeEditar?'inline-flex':'none';
+  document.getElementById('btnEliminarSKU').style.display = puedeEditar?'inline-flex':'none';
+  document.getElementById('labelActions').style.display  = 'none';
+  document.getElementById('detSku').textContent         = item.sku||'—';
+  document.getElementById('detEstadoBadge').textContent = item.activo!==false?'✅ Activo':'❌ Inactivo';
+
+  // Detect client type from the logged-in user's cliente_nombre
+  const clienteNombre = (_user?.cliente_nombre || item.clientes?.nombre || '').toLowerCase();
+  const esSafran   = clienteNombre.includes('safran');
+  const esMartech  = clienteNombre.includes('martech');
+  const esCooper   = clienteNombre.includes('cooper');
+  const esMartechCooper = esMartech || esCooper;
+
+  // Show/hide conditional buttons
+  document.getElementById('btnVerInfo').style.display   = esSafran ? 'inline-flex' : 'none';
+  document.getElementById('btnMasFotos').style.display  = esMartechCooper ? 'inline-flex' : 'none';
+
+  const tipoBultoIcon = {caja:'📦',crate:'🪵',tarima:'🏗️',sobre:'📨',tubo:'🪵',bulto:'📦',pallet:'📦'};
   const campos=[
     ['SKU',item.sku],['Folio Entrada',item.folio_entrada],
     ['Número de Parte',item.numero_parte],['Descripción',item.descripcion],
@@ -301,22 +340,23 @@ async function abrirDetalle(id) {
     ['Ubicación',item.ubicacion],['País Origen',item.origin],
     ['Fecha Entrada',item.fecha_entrada?new Date(item.fecha_entrada+'T12:00:00').toLocaleDateString('es-MX'):'—'],
     ['Cliente',item.clientes?.nombre],
-  ].filter(([,v])=>v!=null&&v!==undefined&&v!=='');
-
-  // Partes detalle
-  const partes = item.partes || [];
+  ];
+  const partes = Array.isArray(item.partes)?item.partes:[];
   const partesHTML = partes.length > 1
-    ? `<div style="margin-top:14px;background:var(--surface);border-radius:10px;padding:12px;border:1px solid var(--border);">
-        <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+    ? `<div class="partes-box">
+        <div class="partes-title">
           📦 Partes en este bulto (${partes.length} líneas — ${partes.reduce((s,p)=>s+(parseInt(p.cantidad)||0),0)} pzs total)
         </div>`+
         partes.map(p=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:white;border-radius:7px;margin-bottom:4px;border:1px solid var(--border);">
+          <div class="partes-row">
             <div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--navy);">${p.numero_parte}</div>
-              <div style="font-size:11px;color:var(--text-400);">${p.descripcion||''}</div>
+              <span class="partes-pn">${p.numero_parte||p.pn||'—'}</span>
+              <span class="partes-desc">${p.descripcion||''}</span>
             </div>
-            <div style="font-size:14px;font-weight:800;color:var(--navy);white-space:nowrap;margin-left:12px;">${p.cantidad} pzs</div>
+            <div>
+              <span class="badge badge-navy">${p.cantidad||1} pzs</span>
+              ${p.po?'<span class="partes-po">PO: '+p.po+'</span>':''}
+            </div>
           </div>`).join('')+
       `</div>`
     : '';
@@ -324,19 +364,100 @@ async function abrirDetalle(id) {
     `<div class="info-item"><div class="info-lbl">${l}</div><div class="info-val">${v||'—'}</div></div>`
   ).join('') + (partesHTML||'');
 
-  // Fotos
-  const imgs = item.imagenes||[];
-  document.getElementById('fotoCount').textContent = imgs.length+' foto'+(imgs.length!==1?'s':'');
-  document.getElementById('imgGallery').innerHTML = imgs.length
-    ? imgs.map((url,i)=>`
-      <div class="img-card" onclick="abrirLightbox('${url}')">
-        <img src="${url}" alt="Foto ${i+1}" loading="lazy" onerror="this.parentElement.style.background='var(--surface2)';this.style.display='none'">
-        <button class="img-dl" onclick="event.stopPropagation();descargarFoto('${url}',${i+1})">⬇️</button>
-      </div>`).join('')
-    : `<div style="text-align:center;padding:40px;color:var(--text-300);grid-column:1/-1;">📷 Sin fotos registradas</div>`;
+  // ── Fotos: separar packing (primera) del resto ────────────────
+  const imgs = Array.isArray(item.imagenes) ? item.imagenes : [];
+
+  // Hide all client-specific sections first
+  document.getElementById('packingFotosSection').style.display  = 'none';
+  document.getElementById('excelPreviewSection').style.display  = 'none';
+  document.getElementById('safranPackingSection').style.display = 'none';
+  document.getElementById('btnVerInfo').style.display           = esSafran ? 'inline-flex' : 'none';
+  document.getElementById('btnMasFotos').style.display          = esMartechCooper ? 'inline-flex' : 'none';
+
+  // Store all non-packing photos for "Más" button
+  window._masFotosUrls = imgs.slice(1); // all except first (packing)
+
+  if (esSafran) {
+    // SAFRAN: show first image as packing photo
+    const packingUrl = imgs[0] || null;
+    const safranDiv = document.getElementById('safranPackingSection');
+    const safranImg = document.getElementById('safranPackingImg');
+    if (packingUrl) {
+      safranDiv.style.display = 'block';
+      safranImg.dataset.url = packingUrl;
+      safranImg.innerHTML = `<img src="${packingUrl}" style="width:100%;height:100%;object-fit:contain;max-height:340px;" loading="lazy">`;
+    }
+    // Show standard gallery with ALL photos (client can browse)
+    document.getElementById('fotoCount').textContent = imgs.length+' foto'+(imgs.length!==1?'s':'');
+    document.getElementById('imgGallery').innerHTML = imgs.length
+      ? imgs.map((url,i)=>`
+        <div class="img-card" onclick="abrirLightbox('${url}')">
+          <img src="${url}" alt="Foto ${i+1}" loading="lazy" onerror="this.parentElement.style.display='none'">
+          <div class="img-num">Foto ${i+1}</div>
+        </div>`).join('')
+      : '<p class="text-muted" style="padding:20px;text-align:center;">Sin fotos</p>';
+  } else if (esMartechCooper) {
+    // MARTECH/COOPER: fetch excel_url + packing photos from martech_entradas
+    const folio = item.folio_entrada;
+    if (folio) {
+      const tableName = esMartech ? 'martech_entradas' : 'cooper_entradas';
+      const {data:entrada} = await sb().from(tableName)
+        .select('excel_url,fotos_packing,carrier,vendor,tracking_number,total_bultos,tipo_bulto')
+        .eq('folio',folio).maybeSingle();
+
+      if (entrada) {
+        // Show Excel preview
+        if (entrada.excel_url) {
+          const excelSec = document.getElementById('excelPreviewSection');
+          excelSec.style.display = 'block';
+          const dlBtn = document.getElementById('excelDownloadBtn');
+          dlBtn.href = entrada.excel_url;
+          dlBtn.download = folio + '.xlsx';
+          // Render Excel table using SheetJS if available
+          await renderExcelPreview(entrada.excel_url, 'excelTableContainer');
+        }
+        // Show packing photos
+        const packingUrls = Array.isArray(entrada.fotos_packing) ? entrada.fotos_packing : [];
+        if (packingUrls.length) {
+          document.getElementById('packingFotosSection').style.display = 'block';
+          document.getElementById('packingFotosGallery').innerHTML = packingUrls.map((url,i)=>`
+            <div class="img-card" onclick="abrirLightbox('${url}')">
+              <img src="${url}" alt="Packing ${i+1}" loading="lazy">
+            </div>`).join('');
+        } else if (imgs.length) {
+          // Fallback: use stored imagenes, first as packing
+          document.getElementById('packingFotosSection').style.display = 'block';
+          document.getElementById('packingFotosGallery').innerHTML = `
+            <div class="img-card" onclick="abrirLightbox('${imgs[0]}')">
+              <img src="${imgs[0]}" alt="Packing" loading="lazy">
+            </div>`;
+          window._masFotosUrls = imgs.slice(1);
+        }
+      }
+    }
+    // Standard gallery (all photos)
+    document.getElementById('fotoCount').textContent = imgs.length+' foto'+(imgs.length!==1?'s':'');
+    document.getElementById('imgGallery').innerHTML = imgs.length
+      ? imgs.map((url,i)=>`
+        <div class="img-card" onclick="abrirLightbox('${url}')">
+          <img src="${url}" alt="Foto ${i+1}" loading="lazy" onerror="this.parentElement.style.display='none'">
+          <div class="img-num">Foto ${i+1}</div>
+        </div>`).join('')
+      : '<p class="text-muted" style="padding:20px;text-align:center;">Sin fotos</p>';
+  } else {
+    // DEFAULT: show all photos normally
+    document.getElementById('fotoCount').textContent = imgs.length+' foto'+(imgs.length!==1?'s':'');
+    document.getElementById('imgGallery').innerHTML = imgs.length
+      ? imgs.map((url,i)=>`
+        <div class="img-card" onclick="abrirLightbox('${url}')">
+          <img src="${url}" alt="Foto ${i+1}" loading="lazy" onerror="this.parentElement.style.display='none'">
+          <div class="img-num">Foto ${i+1}</div>
+        </div>`).join('')
+      : '<p class="text-muted" style="padding:20px;text-align:center;">Sin fotos</p>';
+  }
 
   cancelarEditar();
-  document.getElementById('editLabelForm').style.display='none';
+  document.getElementById('btnAgregarFoto').style.display  = PUEDE_EDITAR(_user)?'flex':'none';
   renderLabelsPreview();
   detTab('info');
   document.getElementById('modalDetalle').classList.add('open');
@@ -624,6 +745,96 @@ function imprimirTodosLabels(){
   if(html)doPrint(PRINT_CSS_4x3.replace('@page{size:4in 3in;margin:0}','@page{size:4in 3in;margin:0}.lbl-4x3{page-break-after:always}'),html);
 }
 */
+
+/* ── Info Safran modal ────────────────────────────────────────── */
+function abrirInfoSafran() {
+  if(!_detalle) return;
+  const d = _detalle;
+  document.getElementById('isSafranSku').textContent = d.sku || '—';
+  const tipoBultoIcon = {caja:'📦',crate:'🪵',tarima:'🏗️',sobre:'📨',tubo:'🪵',bulto:'📦',pallet:'📦'};
+  const rows = [
+    ['🔧 Número de Parte', d.numero_parte],
+    ['📦 Cantidad de Piezas', d.cantidad],
+    ['📦 Cantidad de Bultos', d.bultos],
+    ['⚖️ Peso Total', d.peso_total || d.peso],
+    ['📦 Tipo de Bulto', d.tipo_bulto ? (tipoBultoIcon[d.tipo_bulto]||'')+' '+d.tipo_bulto : null],
+    ['🏗️ Área', d.area],
+    ['🚚 Tracking #', d.tracking_number],
+    ['🏭 Vendor / Proveedor', d.vendor],
+    ['🚚 Carrier / Transportista', d.carrier],
+  ];
+  document.getElementById('infoSafranBody').innerHTML = rows.map(([label, val]) => `
+    <tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:10px 8px;color:#6b7280;font-weight:600;white-space:nowrap;width:50%;">${label}</td>
+      <td style="padding:10px 8px;color:#111827;font-weight:700;">${val || '—'}</td>
+    </tr>`).join('');
+  const overlay = document.getElementById('modalInfoSafran');
+  overlay.style.display = 'flex';
+}
+function cerrarInfoSafran() {
+  document.getElementById('modalInfoSafran').style.display = 'none';
+}
+
+/* ── Más fotos modal (Martech/Cooper) ─────────────────────────── */
+function abrirMasFotos() {
+  const extraUrls = window._masFotosUrls || [];
+  if(!extraUrls.length){showToast('No hay imágenes adicionales','');return;}
+  document.getElementById('masFotosGallery').innerHTML = extraUrls.map((url,i)=>`
+    <div style="border-radius:8px;overflow:hidden;background:#f1f5f9;cursor:pointer;aspect-ratio:1;" onclick="abrirLightbox('${url}')">
+      <img src="${url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" alt="Foto ${i+2}">
+    </div>`).join('');
+  document.getElementById('modalMasFotos').style.display = 'flex';
+}
+function cerrarMasFotos() {
+  document.getElementById('modalMasFotos').style.display = 'none';
+}
+
+/* ── Excel preview con SheetJS ────────────────────────────────── */
+async function renderExcelPreview(url, containerId) {
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '<p style="padding:12px;color:#6b7280;text-align:center;">⏳ Cargando reporte...</p>';
+  try {
+    const resp = await fetch(url);
+    const ab   = await resp.arrayBuffer();
+    if(typeof XLSX === 'undefined'){ container.innerHTML = '<p style="padding:12px;color:#6b7280;text-align:center;">📎 Reporte disponible para descarga</p>'; return; }
+    const wb   = XLSX.read(ab, {type:'array'});
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const html = XLSX.utils.sheet_to_html(ws, {header:'', footer:''});
+    container.innerHTML = `<style>
+      #${containerId} table{border-collapse:collapse;min-width:100%;font-size:11px;}
+      #${containerId} td,#${containerId} th{border:1px solid #d1d5db;padding:5px 8px;white-space:nowrap;}
+      #${containerId} tr:nth-child(even){background:#f9fafb;}
+      #${containerId} tr:first-child td{background:var(--navy,#0d2b7a);color:#fff;font-weight:700;}
+    </style>${html}`;
+  } catch(e) {
+    container.innerHTML = '<p style="padding:12px;color:#ef4444;text-align:center;">⚠️ Error al cargar reporte</p>';
+  }
+}
+
 </script>
+<!-- ── MODAL INFO SAFRAN ─────────────────────────────────────── -->
+<div id="modalInfoSafran" onclick="cerrarInfoSafran()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center;">
+  <div onclick="event.stopPropagation()" style="background:#fff;border-radius:16px;max-width:480px;width:94%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="background:var(--navy,#0d2b7a);color:#fff;padding:16px 20px;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:10px;opacity:.7;letter-spacing:1px;text-transform:uppercase;">Información del Paquete</div>
+        <div style="font-size:17px;font-weight:700;" id="isSafranSku">—</div>
+      </div>
+      <button onclick="cerrarInfoSafran()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;"><tbody id="infoSafranBody"></tbody></table>
+  </div>
+</div>
+<!-- ── MODAL MÁS FOTOS ────────────────────────────────────────── -->
+<div id="modalMasFotos" onclick="cerrarMasFotos()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:3000;align-items:center;justify-content:center;">
+  <div onclick="event.stopPropagation()" style="background:#fff;border-radius:16px;max-width:680px;width:96%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="background:var(--navy,#0d2b7a);color:#fff;padding:16px 20px;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:16px;font-weight:700;">📷 Imágenes adicionales</div>
+      <button onclick="cerrarMasFotos()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <div style="padding:16px;"><div id="masFotosGallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;"></div></div>
+  </div>
+</div>
 </body>
 </html>
