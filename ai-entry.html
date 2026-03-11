@@ -504,16 +504,28 @@ Responde SOLO JSON sin markdown:
 }
 Si hay solo una parte, igual ponla en el array "partes". Si no encuentras un dato deja vacío.`;
 
-      const res = await fetch(ANTHROPIC_PROXY,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-haiku-4-5-20251001',
-          max_tokens:1200,
-          messages:[{role:'user',content:[...imgContent,{type:'text',text:prompt}]}]
-        })
-      });
-      const json = await res.json();
+      // Timeout de 45s para no congelar la UI
+              const _ctrl = new AbortController();
+              const _timer = setTimeout(() => _ctrl.abort(), 45000);
+              let _fetchRes;
+              try {
+                          _fetchRes = await fetch(ANTHROPIC_PROXY, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        signal: _ctrl.signal,
+                                        body: JSON.stringify({
+                                                        model: 'claude-haiku-4-5-20251001',
+                                                        max_tokens: 2000,
+                                                        messages: [{ role: 'user', content: [...imgContent, { type: 'text', text: prompt }] }]
+                                        })
+                          });
+              } catch(fetchErr) {
+                          clearTimeout(_timer);
+                          if (fetchErr.name === 'AbortError') throw new Error('Tiempo de espera agotado (45s). Verifica tu conexión.');
+                          throw fetchErr;
+              }
+              clearTimeout(_timer);
+              const res = _fetchRes;const json = await res.json();
       if(json.error) throw new Error('Anthropic: '+json.error.message);
       const rawText = json.content?.[0]?.text||'{}';
       try{
@@ -673,21 +685,18 @@ async function guardarEntrada(){
     const folio  = `ENT-${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getTime()).slice(-6)}`;
     const bultos = parseInt(document.getElementById('fBultos').value)||1;
 
-    // Upload photos to Supabase Storage
-    let imgUrls = [];
-    for(let i=0;i<_photos.length;i++){
-      try{
-        const p   = _photos[i];
-        const ext = p.file.type.includes('png')?'png':'jpg';
-        const path= `entries/${_sku}/${folio}_${i+1}.${ext}`;
-        const {error:upErr} = await sb().storage.from('imagenes').upload(path, p.file, {upsert:true});
-        if(!upErr){
-          const {data:urlData} = sb().storage.from('imagenes').getPublicUrl(path);
-          imgUrls.push(urlData.publicUrl);
-        }
-      }catch(e){ console.warn('img upload err',e); }
-    }
+    // Subida en paralelo — todas las fotos al mismo tiempo
+    const imgUrls = (await Promise.all(_photos.map(async (p, i) => {
 
+          try {
+                  const ext = p.file.type.includes('png') ? 'png' : 'jpg';
+                  const path = `entries/${_sku}/${folio}_${i+1}.${ext}`;
+                  const { error: upErr } = await sb().storage.from('imagenes').upload(path, p.file, { upsert:true });
+                  if (upErr) return null;
+                  const { data: urlData } = sb().storage.from('imagenes').getPublicUrl(path);
+                  return urlData.publicUrl;
+          } catch(e) { console.warn('img upload err', e); return null; }
+    }))).filter(Boolean);
     const row = {
       sku: _sku, cliente_id: cid,
       numero_parte:    document.getElementById('fPartNumber').value,
