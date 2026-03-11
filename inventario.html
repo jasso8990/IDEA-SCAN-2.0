@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon32.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d2b7a">
-<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?famhily=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="src/css/base.css">
@@ -114,7 +114,7 @@
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <span class="badge badge-orange" id="detEstadoBadge">—</span>
         <button id="btnEditarSKU" class="btn btn-primary btn-sm" onclick="abrirEditar()">✏️ Editar</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.2);" onclick="exportarExcel()">📊 Excel</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.2);" onclick="exportarExcel()">📊 Excel</button>                <button id="btnEliminarSKU" class="btn btn-sm" style="background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);" onclick="eliminarSKU()">🗑️ Eliminar</button>
         <button class="modal-close" onclick="cerrarDetalle()">✕</button>
       </div>
     </div>
@@ -283,7 +283,7 @@ async function abrirDetalle(id) {
   const item = _items.find(i=>i.id===id); if(!item) return;
   _detalle = item;
   const puedeEditar = PUEDE_EDITAR(_user);
-  document.getElementById('btnEditarSKU').style.display = puedeEditar?'inline-flex':'none';
+  document.getElementById('btnEditarSKU').style.display = puedeEditar?'inline-flex':'none';  document.getElementById('btnEliminarSKU').style.display = puedeEditar?'inline-flex':'none';
   document.getElementById('labelActions').style.display  = 'none'; // LABELS_HIDDEN — era: puedeEditar?'flex':'none'
   document.getElementById('detSku').textContent         = item.sku||'—';
   document.getElementById('detEstadoBadge').textContent = item.activo!==false?'📦 En Almacén':'📤 Salida';
@@ -345,7 +345,7 @@ async function abrirDetalle(id) {
 function cerrarDetalle(){document.getElementById('modalDetalle').classList.remove('open');_detalle=null;}
 
 /* ── Subir fotos a entrada existente ── */
-async function subirFotosExistente(e){
+async function subirFotosExistente(e){  if (!PUEDE_EDITAR(_user)) { showToast('Sin permisos para subir fotos', 'error'); return; }
   if(!_detalle) return;
   const files = Array.from(e.target.files);
   if(!files.length) return;
@@ -433,7 +433,7 @@ function abrirEditar(){
 function cancelarEditar(){
   document.getElementById('editForm').style.display='none';
   document.getElementById('infoGrid').style.display='grid';
-  document.getElementById('btnEditarSKU').style.display=PUEDE_EDITAR(_user)?'inline-flex':'none';
+  document.getElementById('btnEditarSKU').style.display=PUEDE_EDITAR(_user)?'inline-flex':'none';  document.getElementById('btnEliminarSKU').style.display=PUEDE_EDITAR(_user)?'inline-flex':'none';
 }
 
 async function guardarEdicion(){
@@ -478,7 +478,7 @@ async function guardarEdicion(){
   showToast('SKU actualizado ✅','success');
 }
 
-/* ── EXCEL ── */
+/* ── ELIMINAR SKU ──────────────────────────────────── */ */
 function exportarExcel(){
   if(!_detalle)return;
   const i=_detalle;
