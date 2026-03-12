@@ -129,7 +129,7 @@ async function doLogin() {
     const { data, error } = await _sb
       .from('usuarios')
       .select('id, nombre, username, rol, cliente_id, almacen_id, color, password_hash, clientes(nombre)')
-      .eq('username', username)
+      .ilike('username', username)
       .eq('estado', 'active')
       .single();
 
