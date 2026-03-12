@@ -458,8 +458,19 @@ async function abrirDetalle(id) {
 
   cancelarEditar();
   document.getElementById('btnAgregarFoto').style.display  = PUEDE_EDITAR(_user)?'flex':'none';
+  // Ocultar pestañas para Martech/Cooper (solo muestran Excel+packing)
+  const _tabInfo = document.getElementById('tabInfo');
+  const _tabFotos = document.getElementById('tabFotos');
+  if (esMartechCooper) {
+    if(_tabInfo) _tabInfo.style.display = 'none';
+    if(_tabFotos) _tabFotos.style.display = 'none';
+  } else {
+    if(_tabInfo) _tabInfo.style.display = '';
+    if(_tabFotos) _tabFotos.style.display = '';
+  }
+  const _la2 = document.getElementById('labelActions'); if(_la2) _la2.style.display = 'none';
   renderLabelsPreview();
-  detTab('info');
+  detTab(esSafran || esMartechCooper ? 'imagenes' : 'info');
   document.getElementById('modalDetalle').classList.add('open');
 }
 
