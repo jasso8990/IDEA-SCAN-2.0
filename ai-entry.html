@@ -308,6 +308,16 @@
       </div>
 LABELS_PASO3_END -->
 
+<!-- ══ ENTRADAS DEL DÍA ══ -->
+<div id="entradasHoySection" style="margin-top:18px;padding:0 4px 20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div style="font-family:'Exo 2',sans-serif;font-size:14px;font-weight:800;color:var(--navy,#0d2b7a);">📋 Entradas del día</div>
+    <button onclick="cargarEntradasHoy()" style="background:none;border:none;color:var(--navy,#0d2b7a);font-size:12px;cursor:pointer;font-weight:600;">🔄 Actualizar</button>
+  </div>
+  <div id="listaEntradasHoy" style="display:flex;flex-direction:column;gap:8px;">
+    <div style="text-align:center;padding:24px;color:var(--text-300,#9ca3af);font-size:13px;">⏳ Cargando...</div>
+  </div>
+</div>
 
     </div>
   </div>
@@ -361,6 +371,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
   renderSidebar('ai_entry'); renderBottomNav('ai_entry');
   await loadClientes();
   selArea('OPS');
+  await cargarEntradasHoy();
 });
 
 /* ── Clientes ── */
@@ -841,6 +852,39 @@ function newEntry(){
   document.getElementById('aiResultPreview').style.display='none';
   selArea('OPS');
   goStep(1);
+}
+/* ── Entradas del día (IA Scan) ─────────────────────────── */
+async function cargarEntradasHoy() {
+  const cont = document.getElementById('listaEntradasHoy');
+  if (!cont) return;
+  cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-300,#9ca3af);font-size:13px;">⏳ Cargando...</div>';
+  // Solo entradas del día en curso
+  const _hoyInicio = new Date(); _hoyInicio.setHours(0,0,0,0);
+  const _hoyFin = new Date(); _hoyFin.setHours(23,59,59,999);
+  let q = sb().from('inventario').select('id,sku,folio_entrada,descripcion,vendor,area,created_at,clientes:cliente_id(nombre)')
+    .gte('created_at', _hoyInicio.toISOString())
+    .lte('created_at', _hoyFin.toISOString())
+    .order('created_at', { ascending: false });
+  if (_user.rol !== 'admin' && _user.cliente_id) q = q.eq('cliente_id', _user.cliente_id);
+  const { data, error } = await q;
+  if (error) { cont.innerHTML = '<div style="text-align:center;padding:16px;color:#ef4444;font-size:12px;">⚠️ Error al cargar entradas</div>'; return; }
+  const items = data || [];
+  if (!items.length) {
+    cont.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-300,#9ca3af);font-size:13px;">Sin entradas hoy</div>';
+    return;
+  }
+  cont.innerHTML = items.map(i => {
+    const cli = i.clientes?.nombre || '';
+    const hora = i.created_at ? new Date(i.created_at).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div onclick="window.location='inventario.html?open=${i.id}'" style="background:white;border:1.5px solid var(--border,#e5e7eb);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='var(--border,#e5e7eb)'">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--navy,#0d2b7a);">${i.sku||'—'}</span>
+        <span style="font-size:11px;font-weight:600;color:white;background:var(--navy,#0d2b7a);border-radius:5px;padding:2px 7px;">${i.area||'—'}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-400,#6b7280);">${hora}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-400,#6b7280);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${i.descripcion||''}${cli?' — '+cli:''}</div>
+    </div>`;
+  }).join('');
 }
 </script>
 </body>
