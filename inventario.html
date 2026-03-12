@@ -312,7 +312,7 @@ async function abrirDetalle(id) {
   const puedeEditar = PUEDE_EDITAR(_user);
   document.getElementById('btnEditarSKU').style.display = puedeEditar?'inline-flex':'none';
   document.getElementById('btnEliminarSKU').style.display = puedeEditar?'inline-flex':'none';
-  document.getElementById('labelActions').style.display  = 'none';
+  const _la = document.getElementById('labelActions'); if(_la) _la.style.display = 'none';
   document.getElementById('detSku').textContent         = item.sku||'—';
   document.getElementById('detEstadoBadge').textContent = item.activo!==false?'✅ Activo':'❌ Inactivo';
 
@@ -657,7 +657,7 @@ function descargarTodasFotos(){
 
 /* ── LABELS ── */
 function getLabelData(){
-  const editMode=document.getElementById('editLabelForm').style.display!=='none';
+  const _elf=document.getElementById('editLabelForm'); const editMode=_elf?_elf.style.display!=='none':false;
   const i=_detalle;
   return {
     vendor:   editMode?document.getElementById('lVendor').value :(i.vendor||''),
@@ -710,14 +710,14 @@ function renderLabelsPreview(){
       </div>
     </div>`;
   }
-  document.getElementById('labelsContainer').innerHTML=html||'<div style="text-align:center;padding:30px;color:var(--text-300);">Sin labels</div>';
+  const _lc=document.getElementById('labelsContainer'); if(_lc) _lc.innerHTML=html||'<div style="text-align:center;padding:30px;color:var(--text-300);">Sin labels</div>';
 }
 
 function toggleEditarLabels(){
   if(!PUEDE_EDITAR(_user))return;
-  const form=document.getElementById('editLabelForm');
+  const form=document.getElementById('editLabelForm'); if(!form) return;
   const show=form.style.display==='none';
-  if(show&&_detalle){
+  if(show&&_detalle&&document.getElementById('lVendor')){
     document.getElementById('lVendor').value  =_detalle.vendor||'';
     document.getElementById('lCarrier').value =_detalle.carrier||'';
     document.getElementById('lTracking').value=_detalle.tracking_number||'';
