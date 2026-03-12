@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon32.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d2b7a">
-<link href="https://fonts.googleapis.com/css2?famhily=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="src/css/base.css">
@@ -599,7 +599,7 @@ async function guardarEdicion(){
   showToast('SKU actualizado ✅','success');
 }
 
-/* ── ELIMINAR SKU ──────────────────────────────────── */ */
+/* ── ELIMINAR SKU ──────────────────────────────────── */
 function exportarExcel(){
   if(!_detalle)return;
   const i=_detalle;
@@ -618,6 +618,21 @@ function exportarExcel(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`${i.sku||'sku'}_detalle.csv`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+/* ── ELIMINAR SKU ── */
+async function eliminarSKU(){
+  if(!_detalle) return;
+  if(!PUEDE_EDITAR(_user)){showToast('Sin permisos para eliminar','error');return;}
+  const sku = _detalle.sku;
+  const id = _detalle.id;
+  if(!confirm('¿Eliminar el SKU '+sku+'? Esta acción no se puede deshacer.')) return;
+  const {error} = await sb().from('inventario').delete().eq('id',id);
+  if(error){showToast('Error al eliminar: '+error.message,'error');return;}
+  _items = _items.filter(i=>i.id!==id);
+  cerrarDetalle();
+  filtrar();
+  showToast('SKU '+sku+' eliminado','success');
 }
 
 /* ── FOTOS ── */
@@ -796,17 +811,64 @@ async function renderExcelPreview(url, containerId) {
   container.innerHTML = '<p style="padding:12px;color:#6b7280;text-align:center;">⏳ Cargando reporte...</p>';
   try {
     const resp = await fetch(url);
-    const ab   = await resp.arrayBuffer();
-    if(typeof XLSX === 'undefined'){ container.innerHTML = '<p style="padding:12px;color:#6b7280;text-align:center;">📎 Reporte disponible para descarga</p>'; return; }
-    const wb   = XLSX.read(ab, {type:'array'});
-    const ws   = wb.Sheets[wb.SheetNames[0]];
-    const html = XLSX.utils.sheet_to_html(ws, {header:'', footer:''});
-    container.innerHTML = `<style>
-      #${containerId} table{border-collapse:collapse;min-width:100%;font-size:11px;}
-      #${containerId} td,#${containerId} th{border:1px solid #d1d5db;padding:5px 8px;white-space:nowrap;}
-      #${containerId} tr:nth-child(even){background:#f9fafb;}
-      #${containerId} tr:first-child td{background:var(--navy,#0d2b7a);color:#fff;font-weight:700;}
-    </style>${html}`;
+    const ab = await resp.arrayBuffer();
+    if(typeof XLSX === 'undefined'){
+      container.innerHTML = '<p style="padding:12px;color:#6b7280;text-align:center;">📎 Reporte disponible para descarga</p>';
+      return;
+    }
+    const wb = XLSX.read(ab, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+    // Detect where the column header row starts (look for PDA/PART NUMBER/NUMERO DE PARTE)
+    let headerEndIdx = 0;
+    for(let r=0;r<Math.min(data.length,15);r++){
+      const rowStr = (data[r]||[]).join(' ').toUpperCase();
+      if(rowStr.includes('PART NUMBER') || rowStr.includes('PDA') || rowStr.includes('NUMERO DE PARTE')){
+        headerEndIdx = r;
+        break;
+      }
+    }
+
+    // Build info panel from top rows
+    let infoHTML = '';
+    for(let r=0; r<headerEndIdx; r++){
+      const row = data[r]||[];
+      const cells = row.filter(c=>String(c).trim());
+      if(cells.length) infoHTML += '<div style="display:flex;gap:8px;flex-wrap:wrap;padding:3px 0;font-size:11px;">' +
+        cells.map((c,i)=>i===0
+          ? '<span style="font-weight:700;color:#0d2b7a;min-width:140px;">'+String(c)+'</span>'
+          : '<span style="color:#374151;">'+String(c)+'</span>').join('<span style="color:#d1d5db;margin:0 2px;">|</span>') + '</div>';
+    }
+
+    // Build data table
+    let tableHTML = '';
+    if(headerEndIdx < data.length) {
+      const colHeaders = data[headerEndIdx]||[];
+      tableHTML = '<table style="border-collapse:collapse;width:100%;font-size:11px;margin-top:2px;">';
+      tableHTML += '<thead><tr>' + colHeaders.map(h =>
+        '<th style="background:#0d2b7a;color:#fff;padding:6px 8px;border:1px solid #1e3a8a;font-weight:700;white-space:nowrap;text-align:center;font-size:10px;">' +
+        String(h||'') + '</th>'
+      ).join('') + '</tr></thead><tbody>';
+      for(let r=headerEndIdx+1; r<data.length; r++){
+        const row = data[r]||[];
+        if(row.every(c=>String(c).trim()==='')) continue;
+        const bg = (r - headerEndIdx) % 2 === 0 ? '#f9fafb' : '#ffffff';
+        tableHTML += '<tr style="background:'+bg+';">' +
+          colHeaders.map((_,ci)=>'<td style="padding:5px 8px;border:1px solid #e5e7eb;color:#1f2937;white-space:nowrap;">' +
+            String(row[ci]??'') + '</td>').join('') + '</tr>';
+      }
+      tableHTML += '</tbody></table>';
+    }
+
+    container.innerHTML = `<div style="border:1.5px solid #0d2b7a;border-radius:8px;overflow:hidden;font-family:Arial,sans-serif;">
+      <div style="background:#0d2b7a;color:#fff;padding:9px 14px;display:flex;align-items:center;gap:10px;">
+        <div style="font-size:14px;font-weight:900;letter-spacing:1px;">CCA GROUP</div>
+        <div style="flex:1;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">MERCHANDISE INSPECTION / REVISIÓN DE MERCANCÍAS</div>
+      </div>
+      ${infoHTML ? '<div style="padding:8px 14px;border-bottom:1px solid #e5e7eb;background:#f8fafc;">'+infoHTML+'</div>' : ''}
+      <div style="overflow-x:auto;">${tableHTML}</div>
+    </div>`;
   } catch(e) {
     container.innerHTML = '<p style="padding:12px;color:#ef4444;text-align:center;">⚠️ Error al cargar reporte</p>';
   }
