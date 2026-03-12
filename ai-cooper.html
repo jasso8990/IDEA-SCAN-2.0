@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IA Cooper — IDEA SCAN 2.0</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon32.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d2b7a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="src/css/base.css">
+  <link rel="stylesheet" href="src/css/layout.css">
+  <link rel="stylesheet" href="src/css/components.css">
+  <link rel="stylesheet" href="src/css/utilities.css">
+  <style>
+    .vista { display:none; }
+    .vista.active { display:block; }
+
+    /* Tipo selector */
+    .tipo-card { border:2px solid var(--border); border-radius:14px; padding:20px; cursor:pointer; transition:all .2s; text-align:center; background:white; }
+    .tipo-card:hover { border-color:#f97316; transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+    .tipo-card.selected { border-color:#f97316; background:rgba(249,115,22,.06); }
+    .tipo-icon { font-size:40px; margin-bottom:10px; }
+    .tipo-label { font-family:'Exo 2',sans-serif; font-size:15px; font-weight:800; color:var(--navy); }
+    .tipo-sub { font-size:11px; color:var(--text-400); margin-top:4px; }
+
+    /* Foto grid */
+    .foto-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(85px,1fr)); gap:8px; margin-bottom:10px; }
+    .foto-thumb { aspect-ratio:1; border-radius:8px; overflow:hidden; border:2px solid var(--border); position:relative; cursor:pointer; }
+    .foto-thumb img { width:100%; height:100%; object-fit:cover; }
+    .foto-thumb .del-btn { position:absolute; top:3px; right:3px; width:20px; height:20px; border-radius:50%; background:rgba(220,38,38,.9); border:none; color:white; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+    /* Bulto card */
+    .bulto-card { background:white; border-radius:12px; border:1.5px solid var(--border); margin-bottom:10px; overflow:hidden; }
+    .bulto-header { background:var(--navy); padding:10px 14px; display:flex; align-items:center; gap:10px; }
+    .bulto-num { font-family:'Exo 2',sans-serif; font-size:14px; font-weight:900; color:white; }
+    .bulto-body { padding:12px 14px; }
+
+    /* Preview Excel table */
+    .preview-table { width:100%; border-collapse:collapse; font-size:11px; background:white; }
+    .preview-table th { background:var(--navy); color:white; padding:7px 10px; font-size:9px; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; text-align:left; }
+    .preview-table td { padding:7px 10px; border-bottom:1px solid var(--border); color:var(--text-700); vertical-align:top; }
+    .preview-table td[contenteditable="true"] { background:rgba(249,115,22,.04); outline:none; }
+    .preview-table td[contenteditable="true"]:focus { background:rgba(249,115,22,.12); box-shadow:inset 0 0 0 1px #f97316; }
+    .preview-table tr:hover td { background:var(--surface); }
+
+    /* Steps */
+    .step-pill { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; background:var(--surface2); color:var(--text-400); }
+    .step-pill.active { background:linear-gradient(135deg,#f97316,#ea6500); color:white; }
+    .step-pill.done { background:rgba(34,199,122,.12); color:#16a34a; }
+
+    /* Renglon maquinaria */
+    .renglon-maq { background:var(--surface); border-radius:10px; border:1px solid var(--border); padding:10px 12px; margin-bottom:6px; }
+    .renglon-maq.completado { border-color:#22c77a; background:rgba(34,199,122,.04); }
+    .renglon-maq.activo { border-color:#f97316; background:rgba(249,115,22,.04); }
+
+    /* Tipo bulto select pill */
+    .bulto-tipo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
+    .bulto-tipo-pill { padding:8px 6px; border-radius:9px; border:1.5px solid var(--border); background:white; text-align:center; cursor:pointer; font-size:11px; font-weight:700; color:var(--text-500); transition:all .15s; }
+    .bulto-tipo-pill:hover { border-color:#f97316; color:#f97316; }
+    .bulto-tipo-pill.selected { border-color:#f97316; background:rgba(249,115,22,.1); color:#ea6500; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+
+    <header class="top-header">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span></button>
+      <div class="header-title">🤖 IA <span>Cooper</span></div>
+      <div id="headerActions" class="header-actions"></div>
+    </header>
+
+    <!-- ══════════════════════════════════════
+         VISTA 0 — LISTA DE ENTRADAS
+    ══════════════════════════════════════ -->
+    <div class="page-body vista active" id="vistaLista">
+      <div class="chip-row mb-12">
+        <div class="chip active" onclick="filtrarEntradas('todos',this)">Todos</div>
+        <div class="chip" onclick="filtrarEntradas('materia_prima',this)">📦 Mat. Prima</div>
+        <div class="chip" onclick="filtrarEntradas('maquinaria',this)">⚙️ Maquinaria</div>
+        <div class="chip" onclick="filtrarEntradas('borrador',this)">✏️ Borradores</div>
+      </div>
+      <div id="listaEntradas">
+        <div class="empty-state"><div class="empty-icon">⏳</div></div>
+      </div>
+      <button class="fab" onclick="showVista('tipo')">+</button>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         VISTA 1 — SELECCIONAR TIPO
+    ══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaTipo">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+        <button class="btn btn-ghost btn-sm" onclick="showVista('lista')">← Volver</button>
+        <div style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:var(--navy);">Nueva Entrada</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+        <div class="tipo-card" id="cardMP" onclick="seleccionarTipo('materia_prima')">
+          <div class="tipo-icon">📦</div>
+          <div class="tipo-label">Materia Prima</div>
+          <div class="tipo-sub">Múltiples bultos<br>por escaneo</div>
+        </div>
+        <div class="tipo-card" id="cardMAQ" onclick="seleccionarTipo('maquinaria')">
+          <div class="tipo-icon">⚙️</div>
+          <div class="tipo-label">Maquinaria</div>
+          <div class="tipo-sub">Partes por packing<br>+ fotos por pieza</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;" id="btnContinuarTipo" onclick="iniciarEntrada()" disabled>
+        Continuar →
+      </button>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         VISTA 2A — MATERIA PRIMA (escaneo por bultos)
+    ══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaMP">
+      <!-- Steps -->
+      <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">
+        <div class="step-pill active" id="mpStep1">📷 Escanear</div>
+        <div style="color:var(--text-300);align-self:center;">→</div>
+        <div class="step-pill" id="mpStep2">👁 Preview</div>
+        <div style="color:var(--text-300);align-self:center;">→</div>
+        <div class="step-pill" id="mpStep3">✅ Confirmar</div>
+      </div>
+
+      <!-- Panel escaneo -->
+      <div id="mpPanelEscaneo">
+        <div style="background:var(--navy);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;">Entrada en progreso</div>
+            <div style="font-family:'Exo 2',sans-serif;font-size:18px;font-weight:900;color:#f97316;" id="mpFolio">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Exo 2',sans-serif;font-size:28px;font-weight:900;color:white;" id="mpBultoCount">0</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5);">bultos</div>
+          </div>
+        </div>
+
+        <!-- Bultos ya procesados -->
+        <div id="mpBultosLista"></div>
+
+        <!-- Zona de nuevo bulto -->
+        <div style="background:white;border-radius:12px;border:2px dashed var(--border2);padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+            📦 Nuevo bulto — <span id="mpNuevoBultoNum">Bulto 1</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-500);margin-bottom:10px;line-height:1.5;">
+            Toma todas las fotos necesarias de este bulto (packing list, label, caja). Cuando tengas todas, presiona <b>Procesar</b>.
+          </div>
+
+          <!-- Grid de fotos del bulto actual -->
+          <div class="foto-grid" id="mpFotoGrid">
+            <label style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--surface);gap:4px;">
+              <span style="font-size:24px;">📷</span>
+              <span style="font-size:10px;color:var(--text-400);">Agregar foto</span>
+              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoMP(event)" multiple>
+            </label>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-ghost btn-sm" onclick="agregarFotoExtraMP()">+ Foto</button>
+            <button class="btn btn-primary" style="flex:1;padding:12px;" id="btnProcesarBulto" onclick="procesarBultoMP()" disabled>
+              🤖 Procesar este bulto
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="flex:1;" onclick="cancelarEntradaMP()">✕ Cancelar</button>
+          <button class="btn btn-success" style="flex:1;padding:13px;" id="btnTerminarMP" onclick="terminarEntradaMP()" disabled>
+            ✅ Terminar y ver preview
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         VISTA 2B — MAQUINARIA
+    ══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaMAQ">
+      <div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">
+        <div class="step-pill active" id="maqStep1">📄 Packing</div>
+        <div style="color:var(--text-300);align-self:center;">→</div>
+        <div class="step-pill" id="maqStep2">🔩 Piezas</div>
+        <div style="color:var(--text-300);align-self:center;">→</div>
+        <div class="step-pill" id="maqStep3">👁 Preview</div>
+        <div style="color:var(--text-300);align-self:center;">→</div>
+        <div class="step-pill" id="maqStep4">✅ Confirmar</div>
+      </div>
+
+      <!-- Sub-paso A: Escanear packing -->
+      <div id="maqPanelPacking">
+        <div style="background:rgba(13,43,122,.06);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text-700);line-height:1.6;">
+          <b>Paso 1:</b> Toma foto(s) del <b>Packing List completo</b>.<br>
+          La IA leerá todos los Part Numbers y preparará los renglones.
+        </div>
+        <div class="foto-grid" id="maqFotoPackingGrid">
+          <label style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--surface);gap:4px;">
+            <span style="font-size:24px;">📷</span>
+            <span style="font-size:10px;color:var(--text-400);">Foto del packing</span>
+            <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoPacking(event)" multiple>
+          </label>
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;margin-top:8px;" id="btnAnalizarPacking" onclick="analizarPacking()" disabled>
+          🤖 Analizar Packing
+        </button>
+      </div>
+
+      <!-- Sub-paso B: Escanear piezas una a una -->
+      <div id="maqPanelPiezas" style="display:none;">
+        <div style="background:var(--navy);border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;">Piezas detectadas en packing</div>
+            <button onclick="agregarRenglonManual()" style="background:rgba(249,115,22,.3);border:1px solid rgba(249,115,22,.5);color:#fb923c;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">+ Agregar</button>
+          </div>
+          <div id="maqRenglonesLista"></div>
+        </div>
+
+        <div style="background:white;border-radius:12px;border:2px dashed var(--border2);padding:14px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+            📸 Toma fotos de la pieza actual
+          </div>
+          <div style="font-size:12px;color:var(--text-500);margin-bottom:10px;">
+            La IA identificará qué Part Number corresponde a estas fotos y completará su información.
+          </div>
+          <div class="foto-grid" id="maqFotoPiezaGrid">
+            <label style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--surface);gap:4px;">
+              <span style="font-size:24px;">📷</span>
+              <span style="font-size:10px;color:var(--text-400);">Foto de pieza</span>
+              <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoPieza(event)" multiple>
+            </label>
+          </div>
+          <button class="btn btn-primary" style="width:100%;padding:12px;margin-top:8px;" id="btnProcesarPieza" onclick="procesarPieza()" disabled>
+            🤖 Identificar pieza
+          </button>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="flex:1;" onclick="cancelarEntradaMAQ()">✕ Cancelar</button>
+          <button class="btn btn-success" style="flex:1;padding:13px;" id="btnTerminarMAQ" onclick="terminarEntradaMAQ()">
+            ✅ Terminar y ver preview
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         VISTA 3 — PREVIEW + TIPO BULTO + CONFIRMAR
+    ══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaPreview">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <button class="btn btn-ghost btn-sm" id="btnVolverPreview" onclick="volverDesdePreview()">← Volver</button>
+        <div style="flex:1;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:800;color:var(--navy);">Preview — Verificar datos</div>
+      </div>
+
+      <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#ea6500;">
+        ✏️ <b>Puedes editar cualquier celda</b> antes de confirmar. Toca el valor para corregirlo.
+      </div>
+
+      <!-- Selector tipo de bulto -->
+      <div class="card mb-14">
+        <div class="card-header"><div class="card-title">📦 Tipo de Bulto</div></div>
+        <div class="card-body">
+          <div class="bulto-tipo-grid" id="tipoBultoGrid">
+            <div class="bulto-tipo-pill" onclick="selTipoBulto('Tarima',this)">🪵 Tarima</div>
+            <div class="bulto-tipo-pill" onclick="selTipoBulto('Caja',this)">📦 Caja</div>
+            <div class="bulto-tipo-pill" onclick="selTipoBulto('Bulto',this)">🎁 Bulto</div>
+            <div class="bulto-tipo-pill" onclick="selTipoBulto('Tubo',this)">🔩 Tubo</div>
+            <div class="bulto-tipo-pill" onclick="selTipoBulto('Java',this)">🧺 Java</div>
+            <div class="bulto-tipo-pill" onclick="selTipoBulto('Crate',this)">📫 Crate</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+            <div>
+              <div style="font-size:10px;color:var(--text-400);font-weight:600;margin-bottom:4px;">CARRIER</div>
+              <select class="form-control" id="carrierSelect" style="height:36px;font-size:13px;">
+                <option value="">— Selecciona —</option>
+                <option>FedEx</option><option>UPS</option><option>DHL</option>
+                <option>XPO</option><option>Matexpress</option><option>Otro</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text-400);font-weight:600;margin-bottom:4px;">TRACKING #</div>
+              <input class="form-control" id="trackingInput" placeholder="Autodetectado" style="height:36px;font-size:12px;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla editable -->
+      <div style="overflow-x:auto;border-radius:10px;box-shadow:var(--shadow);margin-bottom:14px;">
+        <table class="preview-table" id="previewTable">
+          <thead><tr id="previewHeader"></tr></thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="volverDesdePreview()">← Editar más</button>
+        <button class="btn btn-success" style="flex:2;padding:14px;" onclick="confirmarEntrada()">
+          ✅ Confirmar y Generar Excel
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         VISTA 4 — CONFIRMADO
+    ══════════════════════════════════════ -->
+    <div class="page-body vista" id="vistaConfirmado">
+      <div style="text-align:center;padding:40px 20px;">
+        <div style="font-size:64px;margin-bottom:16px;">✅</div>
+        <div style="font-family:'Exo 2',sans-serif;font-size:22px;font-weight:900;color:var(--navy);margin-bottom:6px;">Entrada Registrada</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#f97316;margin-bottom:20px;" id="confirmFolio"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;text-align:left;">
+          <div class="stat-box"><div class="stat-num" id="confirmBultos" style="color:var(--navy);">0</div><div class="stat-lbl">Bultos</div></div>
+          <div class="stat-box"><div class="stat-num" id="confirmRenglones" style="color:var(--navy);">0</div><div class="stat-lbl">Renglones</div></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:14px;margin-bottom:10px;" onclick="descargarExcel()">
+          📊 Descargar Excel
+        </button>
+        <button class="btn btn-ghost" style="width:100%;padding:14px;margin-bottom:10px;" onclick="verDocumento()">
+          👁 Ver documento completo
+        </button>
+        <button class="btn btn-navy" style="width:100%;padding:14px;" onclick="nuevaEntrada()">
+          + Nueva Entrada
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div>
+
+<!-- AI overlay -->
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-spin"></div>
+  <div class="ai-ol-text" id="aiText">Procesando...</div>
+  <div class="ai-ol-sub" id="aiSub"></div>
+</div>
+
+<div class="toast" id="globalToast"></div>
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<!-- Lightbox para fotos -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9000;align-items:center;justify-content:center;" onclick="this.style.display='none'">
+  <img id="lightboxImg" style="max-width:95vw;max-height:90vh;border-radius:10px;object-fit:contain;">
+</div>
+
+<script src="src/js/core/camera.js"></script>
+<script src="src/js/core/config.js"></script>
+<script src="src/js/core/auth.js"></script>
+<script src="src/js/core/nav.js"></script>
+<script>
+'use strict';
+
+// ── ISO 2-letter country codes ────────────────────────────────────────
+const COUNTRY_CODES = {
+  'afghanistan':'AF','albania':'AL','algeria':'DZ','andorra':'AD','angola':'AO',
+  'argentina':'AR','armenia':'AM','australia':'AU','austria':'AT','azerbaijan':'AZ',
+  'bahamas':'BS','bahrain':'BH','bangladesh':'BD','barbados':'BB','belarus':'BY',
+  'belgium':'BE','belize':'BZ','benin':'BJ','bhutan':'BT','bolivia':'BO',
+  'bosnia':'BA','botswana':'BW','brazil':'BR','brunei':'BN','bulgaria':'BG',
+  'burkina faso':'BF','burundi':'BI','cabo verde':'CV','cambodia':'KH',
+  'cameroon':'CM','canada':'CA','chad':'TD','chile':'CL','china':'CN',
+  'colombia':'CO','comoros':'KM','congo':'CG','costa rica':'CR','croatia':'HR',
+  'cuba':'CU','cyprus':'CY','czech':'CZ','denmark':'DK','djibouti':'DJ',
+  'dominica':'DM','dominican':'DO','ecuador':'EC','egypt':'EG','el salvador':'SV',
+  'eritrea':'ER','estonia':'EE','eswatini':'SZ','ethiopia':'ET','fiji':'FJ',
+  'finland':'FI','france':'FR','gabon':'GA','gambia':'GM','georgia':'GE',
+  'germany':'DE','ghana':'GH','greece':'GR','grenada':'GD','guatemala':'GT',
+  'guinea':'GN','guyana':'GY','haiti':'HT','honduras':'HN','hungary':'HU',
+  'iceland':'IS','india':'IN','indonesia':'ID','iran':'IR','iraq':'IQ',
+  'ireland':'IE','israel':'IL','italy':'IT','jamaica':'JM','japan':'JP',
+  'jordan':'JO','kazakhstan':'KZ','kenya':'KE','kuwait':'KW','kyrgyzstan':'KG',
+  'laos':'LA','latvia':'LV','lebanon':'LB','lesotho':'LS','liberia':'LR',
+  'libya':'LY','liechtenstein':'LI','lithuania':'LT','luxembourg':'LU',
+  'madagascar':'MG','malawi':'MW','malaysia':'MY','maldives':'MV','mali':'ML',
+  'malta':'MT','mauritania':'MR','mauritius':'MU','mexico':'MX','moldova':'MD',
+  'monaco':'MC','mongolia':'MN','montenegro':'ME','morocco':'MA','mozambique':'MZ',
+  'myanmar':'MM','namibia':'NA','nepal':'NP','netherlands':'NL','new zealand':'NZ',
+  'nicaragua':'NI','niger':'NE','nigeria':'NG','north korea':'KP','norway':'NO',
+  'oman':'OM','pakistan':'PK','panama':'PA','paraguay':'PY','peru':'PE',
+  'philippines':'PH','poland':'PL','portugal':'PT','qatar':'QA','romania':'RO',
+  'russia':'RU','rwanda':'RW','saudi arabia':'SA','senegal':'SN','serbia':'RS',
+  'singapore':'SG','slovakia':'SK','slovenia':'SI','somalia':'SO',
+  'south africa':'ZA','south korea':'KR','south sudan':'SS','spain':'ES',
+  'sri lanka':'LK','sudan':'SD','suriname':'SR','sweden':'SE','switzerland':'CH',
+  'syria':'SY','tajikistan':'TJ','tanzania':'TZ','thailand':'TH','togo':'TG',
+  'trinidad':'TT','tunisia':'TN','turkey':'TR','turkmenistan':'TM','uganda':'UG',
+  'ukraine':'UA','united arab emirates':'AE','uae':'AE','united kingdom':'GB',
+  'uk':'GB','united states':'US','usa':'US','uruguay':'UY','uzbekistan':'UZ',
+  'venezuela':'VE','vietnam':'VN','yemen':'YE','zambia':'ZM','zimbabwe':'ZW'
+};
+
+function normalizarOrigen(texto) {
+  if (!texto) return '';
+  const t = texto.toLowerCase().trim();
+  // Si ya es código ISO de 2 letras
+  if (/^[A-Z]{2}$/.test(texto.trim().toUpperCase())) return texto.trim().toUpperCase();
+  // Buscar coincidencia parcial
+  for (const [name, code] of Object.entries(COUNTRY_CODES)) {
+    if (t.includes(name) || name.includes(t)) return code;
+  }
+  return texto.toUpperCase().slice(0,2); // fallback
+}
+
+// ── ESTADO GLOBAL ─────────────────────────────────────────────────────
+let _user, _filtro = 'todos';
+let _tipoActual = null;          // 'materia_prima' | 'maquinaria'
+let _entradaActual = null;       // registro en BD
+let _folioActual = null;
+
+// MP
+let _fotosActualesBulto = [];    // fotos del bulto que se está procesando
+let _fotosB64ActualesBulto = [];
+let _bultosData = [];            // [{num, fotos_urls, renglones:[...]}]
+let _trackingGlobal = '';        // primer tracking detectado
+
+// MAQ
+let _fotasPackingB64 = [];
+let _fotosPackingUrls = [];
+let _renglonesMaq = [];          // [{pn, descripcion, marca, modelo, series:[], completado}]
+let _fotasPiezaActualB64 = [];
+let _fotasPiezaActualUrls = [];
+
+// Preview / confirmación
+let _renglonesFinal = [];        // todos los renglones para el Excel
+let _tipoBultoSeleccionado = '';
+let _entradaConfirmadaId = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  _user = requireAuth(); if (!_user) return;
+  const _cN = (_user.cliente_nombre || '').toLowerCase();
+  if (_user.rol !== 'admin' && !_cN.includes('cooper')) { window.location.replace('inventario.html'); return; }
+  renderSidebar('ai_cooper');
+  renderBottomNav('ai_cooper');
+  await cargarEntradas();
+});
+
+function showVista(v) {
+  document.querySelectorAll('.vista').forEach(e => e.classList.remove('active'));
+  const mapa = {lista:'vistaLista',tipo:'vistaTipo',mp:'vistaMP',maq:'vistaMAQ',preview:'vistaPreview',confirmado:'vistaConfirmado'};
+  document.getElementById(mapa[v])?.classList.add('active');
+  if (v === 'lista') cargarEntradas();
+}
+
+// ── LISTA DE ENTRADAS ─────────────────────────────────────────────────
+async function cargarEntradas() {
+  const cont = document.getElementById('listaEntradas');
+  cont.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div></div>';
+  // Solo entradas del día en curso
+  const _hoyInicio = new Date(); _hoyInicio.setHours(0,0,0,0);
+  const _hoyFin = new Date(); _hoyFin.setHours(23,59,59,999);
+  let q = sb().from('cooper_entradas').select('*')
+    .gte('created_at', _hoyInicio.toISOString())
+    .lte('created_at', _hoyFin.toISOString())
+    .order('created_at', {ascending:false});
+  if (_filtro !== 'todos') {
+    if (_filtro === 'borrador') q = q.eq('estado','borrador');
+    else q = q.eq('tipo', _filtro);
+  }
+  const {data} = await q;
+  if (!data?.length) {
+    cont.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-text">Sin entradas hoy</div><div style="font-size:12px;color:var(--text-300);margin-top:6px;">Crea una nueva con el botón +</div></div>';
+    return;
+  }
+  cont.innerHTML = data.map(e => {
+    const icon = e.tipo === 'maquinaria' ? '⚙️' : '📦';
+    const fecha = new Date(e.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+    return `<div class="card mb-8" onclick="abrirEntrada('${e.id}')" style="cursor:pointer;border:1.5px solid var(--border);" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='var(--border)'">
+      <div class="card-body" style="padding:12px 14px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="font-size:28px;">${icon}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+              <div style="font-family:'Exo 2',sans-serif;font-size:14px;font-weight:900;color:var(--navy);">${e.folio}</div>
+              <span class="badge ${e.estado==='confirmado'?'badge-success':'badge-warning'}">${e.estado}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-500);">${e.vendor||'Sin vendor'} · ${e.carrier||'Sin carrier'}</div>
+            <div style="font-size:11px;color:var(--text-300);margin-top:2px;">${fecha} · ${e.total_bultos||0} bultos · ${e.tipo_bulto||'—'}</div>
+          </div>
+          ${e.excel_url ? '<div style="font-size:20px;" title="Excel disponible">📊</div>' : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filtrarEntradas(f, el) {
+  _filtro = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  cargarEntradas();
+}
+
+async function abrirEntrada(id) {
+  const {data:e} = await sb().from('cooper_entradas').select('*').eq('id',id).single();
+  if (!e) return;
+  if (e.folio) {
+    const {data:inv} = await sb().from('inventario').select('id,sku').eq('folio_entrada', e.folio).maybeSingle();
+    if (inv?.id) {
+      window.location.href = 'inventario.html?open=' + inv.id;
+      return;
+    }
+  }
+  const {data:renglones} = await sb().from('cooper_renglones').select('*').eq('entrada_id',id).order('bulto_num');
+  _entradaActual = e;
+  _renglonesFinal = renglones || [];
+  _entradaConfirmadaId = id;
+  document.getElementById('confirmFolio').textContent = e.folio;
+  document.getElementById('confirmBultos').textContent = e.total_bultos || 0;
+  document.getElementById('confirmRenglones').textContent = renglones?.length || 0;
+  showVista('confirmado');
+}
+
+// ── SELECCIONAR TIPO ──────────────────────────────────────────────────
+function seleccionarTipo(t) {
+  _tipoActual = t;
+  document.getElementById('cardMP').classList.toggle('selected', t === 'materia_prima');
+  document.getElementById('cardMAQ').classList.toggle('selected', t === 'maquinaria');
+  document.getElementById('btnContinuarTipo').disabled = false;
+}
+
+async function iniciarEntrada() {
+  if (!_tipoActual) return;
+  // Generar folio
+  const hoy = new Date();
+  const prefix = _tipoActual === 'maquinaria' ? 'MAQ' : 'COO';
+  const yy = String(hoy.getFullYear()).slice(2);
+  const mm = String(hoy.getMonth()+1).padStart(2,'0');
+  const dd = String(hoy.getDate()).padStart(2,'0');
+  const {count} = await sb().from('cooper_entradas').select('*',{count:'exact',head:true}).like('folio', `${prefix}-${yy}${mm}${dd}%`);
+  _folioActual = `${prefix}-${yy}${mm}${dd}-${String((count||0)+1).padStart(3,'0')}`;
+
+  // Crear borrador en BD
+  const {data:entrada} = await sb().from('cooper_entradas').insert({
+    folio: _folioActual,
+    tipo: _tipoActual,
+    operador_id: _user.id,
+    operador_nombre: _user.nombre || _user.username,
+    estado: 'borrador'
+  }).select('id').single();
+  _entradaActual = entrada;
+
+  // Reset estado
+  _bultosData = []; _fotosActualesBulto = []; _fotosB64ActualesBulto = [];
+  _trackingGlobal = ''; _renglonesMaq = [];
+  _fotasPackingB64 = []; _fotosPackingUrls = [];
+  _fotasPiezaActualB64 = []; _fotasPiezaActualUrls = [];
+
+  if (_tipoActual === 'materia_prima') {
+    actualizarUIMP();
+    showVista('mp');
+  } else {
+    resetPackingUI();
+    showVista('maq');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// MATERIA PRIMA
+// ══════════════════════════════════════════════════════════════════════
+function actualizarUIMP() {
+  document.getElementById('mpFolio').textContent = _folioActual;
+  document.getElementById('mpBultoCount').textContent = _bultosData.length;
+  document.getElementById('mpNuevoBultoNum').textContent = `Bulto ${_bultosData.length + 1}`;
+  document.getElementById('btnTerminarMP').disabled = _bultosData.length === 0;
+  renderBultosLista();
+  resetFotoGridMP();
+}
+
+function renderBultosLista() {
+  const cont = document.getElementById('mpBultosLista');
+  if (!_bultosData.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = _bultosData.map(b => `
+    <div class="bulto-card mb-8">
+      <div class="bulto-header">
+        <span style="font-size:18px;">✅</span>
+        <div class="bulto-num">Bulto ${b.num}</div>
+        <div style="margin-left:auto;font-size:11px;color:rgba(255,255,255,.6);">${b.renglones.length} renglon${b.renglones.length!==1?'es':''} · ${b.fotos_urls.length} fotos</div>
+      </div>
+      <div class="bulto-body">
+        ${b.renglones.map(r => `
+          <div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;">
+            <span style="font-family:monospace;font-weight:700;color:var(--navy);min-width:80px;">${r.pn||'—'}</span>
+            <span style="color:var(--text-500);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.descripcion||'—'}</span>
+            <span style="color:var(--text-400);flex-shrink:0;">${r.cantidad||'?'} pz</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function resetFotoGridMP() {
+  _fotosActualesBulto = []; _fotosB64ActualesBulto = [];
+  const grid = document.getElementById('mpFotoGrid');
+  grid.innerHTML = `<label style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--surface);gap:4px;">
+    <span style="font-size:24px;">📷</span>
+    <span style="font-size:10px;color:var(--text-400);">Agregar foto</span>
+    <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoMP(event)" multiple>
+  </label>`;
+  document.getElementById('btnProcesarBulto').disabled = true;
+}
+
+async function agregarFotoMP(e) {
+  const files = [...e.target.files]; if (!files.length) return;
+  e.target.value = '';
+  for (const file of files) {
+    const dataUrl = await fileToDataUrl(file);
+    _fotosActualesBulto.push({file, dataUrl});
+    _fotosB64ActualesBulto.push(await compressImage(dataUrl, 'texto'));
+    renderFotoThumb(document.getElementById('mpFotoGrid'), dataUrl, _fotosActualesBulto.length-1, 'MP');
+  }
+  document.getElementById('btnProcesarBulto').disabled = false;
+}
+
+function agregarFotoExtraMP() {
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.style.display='none';
+  inp.multiple = true;
+  inp.onchange = e => agregarFotoMP(e);
+  document.body.appendChild(inp); inp.click(); inp.remove();
+}
+
+function renderFotoThumb(grid, dataUrl, idx, mode) {
+  const div = document.createElement('div');
+  div.className = 'foto-thumb';
+  div.innerHTML = `<img src="${dataUrl}" onclick="verFoto('${dataUrl}')">
+    <button class="del-btn" onclick="eliminarFoto(${idx},'${mode}')">×</button>`;
+  // Insertar antes del label de agregar
+  const label = grid.querySelector('label');
+  if (label) grid.insertBefore(div, label);
+  else grid.appendChild(div);
+}
+
+function eliminarFoto(idx, mode) {
+  if (mode === 'MP') {
+    _fotosActualesBulto.splice(idx, 1);
+    _fotosB64ActualesBulto.splice(idx, 1);
+    if (!_fotosActualesBulto.length) document.getElementById('btnProcesarBulto').disabled = true;
+    // Re-render
+    const grid = document.getElementById('mpFotoGrid');
+    const thumbs = [...grid.querySelectorAll('.foto-thumb')];
+    thumbs.forEach(t => t.remove());
+    _fotosActualesBulto.forEach((f,i) => renderFotoThumb(grid, f.dataUrl, i, 'MP'));
+  }
+}
+
+async function procesarBultoMP() {
+  if (!_fotosB64ActualesBulto.length) return;
+  showAI('Analizando bulto '+ (_bultosData.length+1) +'...', 'La IA extrae: PN, PO, descripción, origen, cantidad, peso, tracking, vendor');
+
+  try {
+    // Subir fotos del bulto al storage
+    const fotosUrls = await subirFotos(_fotosActualesBulto, `cooper/${_folioActual}/bulto${_bultosData.length+1}`);
+
+    // Enviar imágenes a la IA
+    const content = _fotosB64ActualesBulto.map(b64 => ({
+      type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}
+    }));
+
+    content.push({type:'text', text: `Eres un sistema experto en documentos de importación/exportación para almacén de MATERIA PRIMA.
+DOCUMENTOS POSIBLES: Packing List, Certificate of Origin, Invoice, Factura.
+Extrae TODA la información con máxima precisión.
+
+Responde SOLO JSON puro sin backticks ni texto extra:
+{
+  "renglones": [
+    {
+      "po": "Purchase Order / PO exacto tal como aparece",
+      "pn": "Part Number exacto tal como aparece (respeta mayúsculas, guiones, espacios)",
+      "descripcion": "descripción completa del producto o material",
+      "sn": "número de serie S/N si aparece o null",
+      "origen": "país de origen en inglés (ej: China, Mexico, USA, Germany)",
+      "cantidad": 1,
+      "weight": "peso con unidad (ej: 25.5 kg, 56 lb, 12.3 ACTWGT)"
+    }
+  ],
+  "tracking_number": "tracking number trk# global del envío o null",
+  "num_bultos": "total bultos ('1 of 3'=3, 'Box 2/4'=4) o null",
+  "vendor": "nombre del vendedor/proveedor principal",
+  "carrier": "transportista (DHL, UPS, FedEx, XPO, Matexpress, etc) o null",
+  "origin_id": "Origin ID del carrier si aparece o null",
+  "po": "PO global del encabezado del documento o null"
+}
+
+REGLAS CRÍTICAS:
+- NO inventes, NO asumas — solo extrae lo visible en las imágenes
+- Copia el PN exactamente como aparece en el documento
+- Si hay varios PN distintos → crea un objeto por cada PN
+- Si hay varios S/N para el mismo PN → crea un objeto por cada S/N
+- Si un campo no aparece → usa null o ""
+- cantidad: número entero de piezas en ese renglon del documento
+- num_bultos: busca "1 of 2", "Piece 1 of 3", "Box 2/4" → extrae el total
+- weight: prioriza ACTWGT, luego KG o LB por bulto
+- tracking: busca en labels de carrier (DHL/UPS/FedEx/XPO) el número de rastreo`});
+
+    const res = await callAI(content, 'claude-sonnet-4-20250514', 2000);
+    let d = {};
+    try { d = JSON.parse((res||'{}').replace(/```json|```/g,'').trim()); } catch(ex) {}
+
+    const renglones = (d.renglones || []).map(r => ({
+      ...r,
+      origen: normalizarOrigen(r.origen),
+      cantidad: parseInt(r.cantidad) || 1
+    }));
+
+    if (!renglones.length) {
+      hideAI();
+      showToast('La IA no detectó información. Intenta con mejores fotos.', 'error');
+      return;
+    }
+
+    // Guardar primer tracking global
+    if (!_trackingGlobal && (d.tracking_number || renglones[0]?.tracking_number)) {
+      _trackingGlobal = d.tracking_number || renglones[0].tracking_number;
+    }
+    // Guardar vendor global si no lo tenemos
+    if (!_entradaActual.vendor && (d.vendor || renglones[0]?.vendor)) {
+      const v = d.vendor || renglones[0].vendor;
+      await sb().from('cooper_entradas').update({vendor: v, carrier: d.carrier||null}).eq('id', _entradaActual.id);
+      _entradaActual.vendor = v;
+    }
+
+    // Insertar renglones en BD
+    const bultoNum = _bultosData.length + 1;
+    const rows = renglones.map(r => ({
+      entrada_id: _entradaActual.id,
+      bulto_num: bultoNum,
+      tipo_renglon: 'materia_prima',
+      po: r.po || null,
+      pn: r.pn || null,
+      descripcion: r.descripcion || null,
+      origen: r.origen || null,
+      cantidad: r.cantidad || 1,
+      weight: r.weight || null,
+      tracking_number: _trackingGlobal || r.tracking_number || null,
+      vendor: r.vendor || _entradaActual.vendor || null,
+      fotos_bulto: fotosUrls,
+      datos_raw: r
+    }));
+    await sb().from('cooper_renglones').insert(rows);
+
+    _bultosData.push({num: bultoNum, fotos_urls: fotosUrls, renglones});
+    hideAI();
+    actualizarUIMP();
+    showToast(`✅ Bulto ${bultoNum} procesado — ${renglones.length} renglon${renglones.length!==1?'es':''}`, 'success');
+
+  } catch(err) { hideAI(); showToast('Error IA: '+err.message, 'error'); }
+}
+
+async function terminarEntradaMP() {
+  if (!_bultosData.length) return;
+  await sb().from('cooper_entradas').update({total_bultos: _bultosData.length}).eq('id', _entradaActual.id);
+  await cargarPreview();
+  showVista('preview');
+  document.getElementById('btnVolverPreview').onclick = () => showVista('mp');
+  // Pre-llenar tracking si se detectó
+  if (_trackingGlobal) document.getElementById('trackingInput').value = _trackingGlobal;
+}
+
+function cancelarEntradaMP() {
+  if (!confirm('¿Cancelar esta entrada? Se perderán los datos no guardados.')) return;
+  if (_entradaActual?.id) sb().from('cooper_entradas').delete().eq('id', _entradaActual.id);
+  showVista('lista');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// MAQUINARIA
+// ══════════════════════════════════════════════════════════════════════
+function resetPackingUI() {
+  _fotasPackingB64 = []; _fotosPackingUrls = [];
+  document.getElementById('maqPanelPacking').style.display = 'block';
+  document.getElementById('maqPanelPiezas').style.display = 'none';
+  document.getElementById('maqFotoPackingGrid').innerHTML = `
+    <label style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--surface);gap:4px;">
+      <span style="font-size:24px;">📷</span>
+      <span style="font-size:10px;color:var(--text-400);">Foto del packing</span>
+      <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoPacking(event)" multiple>
+    </label>`;
+  document.getElementById('btnAnalizarPacking').disabled = true;
+  ['maqStep1','maqStep2','maqStep3','maqStep4'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    el.className = i===0 ? 'step-pill active' : 'step-pill';
+  });
+}
+
+async function agregarFotoPacking(e) {
+  const files = [...e.target.files]; if (!files.length) return; e.target.value = '';
+  for (const file of files) {
+    const dataUrl = await fileToDataUrl(file);
+    const b64 = await compressImage(dataUrl, 'texto');
+    _fotasPackingB64.push(b64);
+    // Subir al storage
+    const p = `cooper/${_folioActual}/packing/${Date.now()}.jpg`;
+    await sb().storage.from('imagenes').upload(p, file, {upsert:true});
+    const {data:u} = sb().storage.from('imagenes').getPublicUrl(p);
+    if (u?.publicUrl) _fotosPackingUrls.push(u.publicUrl);
+    renderFotoThumb(document.getElementById('maqFotoPackingGrid'), dataUrl, _fotasPackingB64.length-1, 'PACK');
+  }
+  document.getElementById('btnAnalizarPacking').disabled = false;
+}
+
+async function analizarPacking() {
+  if (!_fotasPackingB64.length) return;
+  showAI('Leyendo packing list...', 'La IA detecta todos los Part Numbers y piezas');
+  try {
+    const content = _fotasPackingB64.map(b64 => ({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}}));
+    content.push({type:'text', text:`Eres un sistema experto en documentos de importación/exportación para almacén de MAQUINARIA e INDUSTRIAL.
+DOCUMENTOS POSIBLES: Packing List, Certificate of Origin, Invoice, Factura.
+Extrae TODOS los items/partes con máxima precisión.
+
+Responde SOLO JSON puro sin backticks ni texto extra:
+{
+  "vendor": "nombre del vendedor/proveedor principal",
+  "po": "Purchase Order / PO del documento",
+  "tracking_number": "tracking number si aparece o null",
+  "carrier": "transportista (FedEx, UPS, DHL, XPO, Matexpress, etc) o null",
+  "origin_id": "Origin ID del carrier si aparece o null",
+  "num_bultos": "total bultos si aparece ('1 of 3'=3) o null",
+  "piezas": [
+    {
+      "pn": "Part Number exacto tal como aparece",
+      "descripcion": "descripción completa de la pieza o equipo",
+      "marca": "marca o fabricante si aparece o null",
+      "modelo": "modelo si aparece o null",
+      "cantidad": 1,
+      "origen": "país de origen en inglés o null",
+      "weight": "peso con unidad si aparece o null",
+      "po": "PO de esta pieza si es distinto al global o null",
+      "sn": "número de serie S/N si aparece en el packing o null"
+    }
+  ]
+}
+
+REGLAS CRÍTICAS:
+- NO inventes, NO asumas — solo extrae lo visible en las imágenes
+- Copia el PN exactamente como aparece
+- Crea un objeto en "piezas" por cada Part Number diferente
+- Si un campo no aparece → usa null
+- cantidad: número entero de unidades de ese PN
+- Busca tracking en labels de carrier DHL/UPS/FedEx/XPO`});
+
+    const res = await callAI(content, 'claude-sonnet-4-20250514', 2000);
+    let d = {};
+    try { d = JSON.parse((res||'{}').replace(/```json|```/g,'').trim()); } catch(ex) {}
+
+    _renglonesMaq = (d.piezas || []).map(p => ({
+      pn: p.pn || '',
+      descripcion: p.descripcion || '',
+      marca: p.marca || '',
+      modelo: p.modelo || '',
+      cantidad: parseInt(p.cantidad) || 1,
+      origen: normalizarOrigen(p.origen),
+      weight: p.weight || '',
+      po: p.po || '',
+      series: [],
+      completado: false,
+      fotos: []
+    }));
+
+    if (!_trackingGlobal && d.tracking_number) _trackingGlobal = d.tracking_number;
+    if (!_entradaActual.vendor && d.vendor) {
+      await sb().from('cooper_entradas').update({vendor: d.vendor, carrier: d.carrier||null}).eq('id', _entradaActual.id);
+      _entradaActual.vendor = d.vendor;
+    }
+
+    hideAI();
+
+    if (!_renglonesMaq.length) {
+      showToast('No se detectaron piezas. Intenta con mejor foto del packing.', 'error');
+      return;
+    }
+
+    document.getElementById('maqPanelPacking').style.display = 'none';
+    document.getElementById('maqPanelPiezas').style.display = 'block';
+    document.getElementById('maqStep1').className = 'step-pill done';
+    document.getElementById('maqStep2').className = 'step-pill active';
+    resetFotoPiezaGrid();
+    renderRenglonesMaq();
+    showToast(`✅ ${_renglonesMaq.length} piezas detectadas`, 'success');
+
+  } catch(err) { hideAI(); showToast('Error IA: '+err.message, 'error'); }
+}
+
+function agregarRenglonManual() {
+  const pn = prompt('Part Number del nuevo renglón:');
+  if (!pn?.trim()) return;
+  const desc = prompt('Descripción (opcional):') || '';
+  _renglonesMaq.push({
+    pn: pn.trim().toUpperCase(),
+    descripcion: desc,
+    marca: '', modelo: '', cantidad: 1,
+    origen: '', weight: '', po: '',
+    series: [], completado: false, fotos: []
+  });
+  renderRenglonesMaq();
+  showToast(`Renglón ${pn.trim().toUpperCase()} agregado`, 'success');
+}
+
+function renderRenglonesMaq() {
+  const cont = document.getElementById('maqRenglonesLista');
+  cont.innerHTML = _renglonesMaq.map((r,i) => `
+    <div class="renglon-maq ${r.completado?'completado':''}">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">${r.completado?'✅':'⬜'}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${r.completado?'#22c77a':'white'};">${r.pn||'—'}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.descripcion||'—'}</div>
+          ${r.series.length ? `<div style="font-size:9px;color:#f97316;margin-top:1px;">SN: ${r.series.join(', ')}</div>` : ''}
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);">${r.cantidad} pz</div>
+      </div>
+    </div>`).join('');
+}
+
+function resetFotoPiezaGrid() {
+  _fotasPiezaActualB64 = []; _fotasPiezaActualUrls = [];
+  document.getElementById('maqFotoPiezaGrid').innerHTML = `
+    <label style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:var(--surface);gap:4px;">
+      <span style="font-size:24px;">📷</span>
+      <span style="font-size:10px;color:var(--text-400);">Foto de pieza</span>
+      <input type="file" accept="image/*" capture="environment" style="display:none" onchange="agregarFotoPieza(event)" multiple>
+    </label>`;
+  document.getElementById('btnProcesarPieza').disabled = true;
+}
+
+async function agregarFotoPieza(e) {
+  const files = [...e.target.files]; if (!files.length) return; e.target.value = '';
+  for (const file of files) {
+    const dataUrl = await fileToDataUrl(file);
+    _fotasPiezaActualB64.push(await compressImage(dataUrl, 'texto'));
+    const p = `cooper/${_folioActual}/pieza_${Date.now()}.jpg`;
+    await sb().storage.from('imagenes').upload(p, file, {upsert:true});
+    const {data:u} = sb().storage.from('imagenes').getPublicUrl(p);
+    if (u?.publicUrl) _fotasPiezaActualUrls.push(u.publicUrl);
+    renderFotoThumb(document.getElementById('maqFotoPiezaGrid'), dataUrl, _fotasPiezaActualB64.length-1, 'PIEZA');
+  }
+  document.getElementById('btnProcesarPieza').disabled = false;
+}
+
+async function procesarPieza() {
+  if (!_fotasPiezaActualB64.length) return;
+  showAI('Identificando pieza...', 'La IA determina el Part Number y número de serie');
+  try {
+    const pnList = _renglonesMaq.map(r => `${r.pn}: ${r.descripcion}`).join('\n');
+    const content = _fotasPiezaActualB64.map(b64 => ({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}}));
+    content.push({type:'text', text:`Eres un sistema experto en lectura de labels de piezas industriales y documentos de envío.
+Analiza TODAS las imágenes: pueden incluir labels de CARRIER (transportista) y/o labels/etiquetas de PIEZAS.
+
+TIPO 1 — LABEL DE CARRIER (DHL, UPS, FedEx, XPO, Matexpress u otro):
+Extrae: peso por bulto (lbs/kg/ACTWGT), nombre del carrier, tracking number/trk#, Origin ID, vendor/remitente, total de bultos ("1 of 2" → total=2).
+
+TIPO 2 — LABEL/ETIQUETA DE PIEZA:
+Extrae: Part Number exacto, número de serie (S/N), cantidad de piezas, modelo.
+
+Los Part Numbers detectados en el packing son:
+${pnList}
+
+Identifica cuál de esos PN corresponde a las fotos (o detecta uno nuevo si no está en la lista).
+
+Responde SOLO JSON puro sin backticks ni texto extra:
+{
+  "pn_detectado": "el PN que corresponde a esta pieza, exacto como aparece",
+  "numeros_serie": ["SN1","SN2"],
+  "marca": "marca visible en las fotos o null",
+  "modelo": "modelo visible en las fotos o null",
+  "cantidad_detectada": 1,
+  "weight": "peso con unidad (ej: 25.5 kg, 56 lb, 12.3 ACTWGT) o null",
+  "carrier": "nombre del transportista si hay label de carrier o null",
+  "tracking_number": "tracking number trk# del carrier o null",
+  "origin_id": "Origin ID del carrier si aparece o null",
+  "num_bultos": "total de bultos ('1 of 2'=2) o null",
+  "vendor": "vendedor/remitente si aparece en label de carrier o null",
+  "notas": "cualquier información adicional relevante visible"
+}
+
+REGLAS CRÍTICAS:
+- Analiza TODAS las imágenes, no solo la primera
+- Copia el PN exactamente como aparece (mayúsculas, guiones, espacios, puntos)
+- numeros_serie: lista TODOS los S/N que aparezcan en las imágenes
+- weight: busca ACTWGT, KG, LB en labels de carrier
+- tracking_number: número alfanumérico largo típico de DHL/UPS/FedEx/XPO
+- Si no encuentras un campo → usa null`});
+
+    const res = await callAI(content, 'claude-sonnet-4-20250514', 1500);
+    let d = {};
+    try { d = JSON.parse((res||'{}').replace(/```json|```/g,'').trim()); } catch(ex) {}
+
+    // Encontrar el renglon que corresponde
+    const pnDet = (d.pn_detectado||'').trim().toUpperCase();
+    let renglon = _renglonesMaq.find(r => r.pn.toUpperCase() === pnDet);
+    // Fallback: buscar similaridad
+    if (!renglon) renglon = _renglonesMaq.find(r => pnDet.includes(r.pn.toUpperCase()) || r.pn.toUpperCase().includes(pnDet));
+    // Si no hay match, usar el primer incompleto
+    if (!renglon) renglon = _renglonesMaq.find(r => !r.completado);
+
+    if (renglon) {
+      if (d.numeros_serie?.length) renglon.series.push(...d.numeros_serie);
+      if (d.marca && !renglon.marca) renglon.marca = d.marca;
+      if (d.modelo && !renglon.modelo) renglon.modelo = d.modelo;
+      renglon.fotos.push(..._fotasPiezaActualUrls);
+      renglon.completado = true;
+    }
+
+    hideAI();
+    renderRenglonesMaq();
+    resetFotoPiezaGrid();
+    const quedan = _renglonesMaq.filter(r => !r.completado).length;
+    showToast(`✅ Pieza identificada: ${d.pn_detectado||'?'}${quedan>0?' — '+quedan+' pieza'+( quedan!==1?'s':'')+' pendientes':''}`, 'success');
+
+  } catch(err) { hideAI(); showToast('Error IA: '+err.message, 'error'); }
+}
+
+async function terminarEntradaMAQ() {
+  // Construir renglones finales desde _renglonesMaq
+  // Si un PN tiene múltiples series → un renglon por serie
+  const rows = [];
+  for (const r of _renglonesMaq) {
+    if (r.series.length > 1) {
+      for (const sn of r.series) {
+        rows.push({...r, numero_serie: sn, series: undefined, cantidad: 1});
+      }
+    } else {
+      rows.push({...r, numero_serie: r.series[0]||null, series: undefined});
+    }
+  }
+
+  // Insertar en BD
+  const dbRows = rows.map((r,i) => ({
+    entrada_id: _entradaActual.id,
+    bulto_num: 1,
+    tipo_renglon: 'maquinaria',
+    po: r.po || null,
+    pn: r.pn || null,
+    descripcion: r.descripcion || null,
+    origen: r.origen || null,
+    cantidad: r.cantidad || 1,
+    weight: r.weight || null,
+    tracking_number: _trackingGlobal || null,
+    vendor: _entradaActual.vendor || null,
+    marca: r.marca || null,
+    modelo: r.modelo || null,
+    numero_serie: r.numero_serie || null,
+    fotos_bulto: r.fotos || [],
+    datos_raw: r
+  }));
+
+  if (dbRows.length) await sb().from('cooper_renglones').insert(dbRows);
+  await sb().from('cooper_entradas').update({total_bultos: 1}).eq('id', _entradaActual.id);
+  _bultosData = [{num:1, fotos_urls:[], renglones:rows}];
+
+  await cargarPreview();
+  showVista('preview');
+  document.getElementById('btnVolverPreview').onclick = () => showVista('maq');
+  if (_trackingGlobal) document.getElementById('trackingInput').value = _trackingGlobal;
+}
+
+function cancelarEntradaMAQ() {
+  if (!confirm('¿Cancelar esta entrada?')) return;
+  if (_entradaActual?.id) sb().from('cooper_entradas').delete().eq('id', _entradaActual.id);
+  showVista('lista');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PREVIEW + CONFIRMAR
+// ══════════════════════════════════════════════════════════════════════
+async function cargarPreview() {
+  const {data:renglones} = await sb().from('cooper_renglones').select('*').eq('entrada_id', _entradaActual.id).order('bulto_num');
+  _renglonesFinal = renglones || [];
+
+  const esMaq = _tipoActual === 'maquinaria';
+  const headers = esMaq
+    ? ['Bulto','PO','PN','Descripción','Origen','Cant','Peso','Tracking','Vendor','Marca','Modelo','N° Serie']
+    : ['Bulto','PO','PN','Descripción','Origen','Cant','Peso','Tracking','Vendor'];
+
+  document.getElementById('previewHeader').innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+
+  document.getElementById('previewBody').innerHTML = _renglonesFinal.map((r,i) => {
+    const cells = esMaq
+      ? [r.bulto_num, r.po||'', r.pn||'', r.descripcion||'', r.origen||'', r.cantidad||1, r.weight||'', r.tracking_number||'', r.vendor||'', r.marca||'', r.modelo||'', r.numero_serie||'']
+      : [r.bulto_num, r.po||'', r.pn||'', r.descripcion||'', r.origen||'', r.cantidad||1, r.weight||'', r.tracking_number||'', r.vendor||''];
+    return `<tr data-id="${r.id}">
+      ${cells.map((c,ci) => `<td contenteditable="${ci>0}" onblur="editarCelda(this,'${r.id}',${ci})">${c}</td>`).join('')}
+    </tr>`;
+  }).join('');
+
+  // Reset tipo bulto selector
+  document.querySelectorAll('.bulto-tipo-pill').forEach(p => p.classList.remove('selected'));
+  _tipoBultoSeleccionado = '';
+}
+
+const CAMPOS_PREVIEW_MP  = ['bulto_num','po','pn','descripcion','origen','cantidad','weight','tracking_number','vendor'];
+const CAMPOS_PREVIEW_MAQ = ['bulto_num','po','pn','descripcion','origen','cantidad','weight','tracking_number','vendor','marca','modelo','numero_serie'];
+
+async function editarCelda(td, renglonId, colIdx) {
+  const val = td.textContent.trim();
+  const esMaq = _tipoActual === 'maquinaria';
+  const campos = esMaq ? CAMPOS_PREVIEW_MAQ : CAMPOS_PREVIEW_MP;
+  const campo = campos[colIdx];
+  if (!campo || campo === 'bulto_num') return;
+  await sb().from('cooper_renglones').update({[campo]: val || null}).eq('id', renglonId);
+}
+
+function selTipoBulto(tipo, el) {
+  _tipoBultoSeleccionado = tipo;
+  document.querySelectorAll('.bulto-tipo-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function confirmarEntrada() {
+  if (!_tipoBultoSeleccionado) { showToast('Selecciona el tipo de bulto', 'error'); return; }
+  const carrier = document.getElementById('carrierSelect').value;
+  const tracking = document.getElementById('trackingInput').value.trim();
+
+  showAI('Guardando entrada...', '');
+  try {
+    // Actualizar tracking en todos los renglones si se cambió
+    if (tracking) {
+      await sb().from('cooper_renglones').update({tracking_number: tracking}).eq('entrada_id', _entradaActual.id);
+    }
+
+    // Generar Excel y subirlo
+    const xlsxBlob = generarExcelBlob();
+    const xlsxPath = `cooper/${_folioActual}/${_folioActual}.xlsx`;
+    await sb().storage.from('imagenes').upload(xlsxPath, xlsxBlob, {upsert:true, contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const {data:xlsxUrl} = sb().storage.from('imagenes').getPublicUrl(xlsxPath);
+
+    // Confirmar entrada
+    const {data:entradaUpd} = await sb().from('cooper_entradas').update({
+      estado: 'confirmado',
+      tipo_bulto: _tipoBultoSeleccionado,
+      carrier: carrier || null,
+      tracking_number: tracking || _trackingGlobal || null,
+      total_bultos: _bultosData.length || 1,
+      excel_url: xlsxUrl?.publicUrl || null
+    }).eq('id', _entradaActual.id).select('id').single();
+
+    _entradaConfirmadaId = _entradaActual.id;
+    hideAI();
+
+    // Actualizar renglones finales para descarga local
+    const {data:renglones} = await sb().from('cooper_renglones').select('*').eq('entrada_id', _entradaActual.id);
+    _renglonesFinal = renglones || [];
+
+    document.getElementById('confirmFolio').textContent = _folioActual;
+    document.getElementById('confirmBultos').textContent = _bultosData.length || 1;
+    document.getElementById('confirmRenglones').textContent = _renglonesFinal.length;
+    showVista('confirmado');
+
+  } catch(err) { hideAI(); showToast('Error: '+err.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// EXCEL
+// ══════════════════════════════════════════════════════════════════════
+function generarExcelBlob() {
+  const wb = XLSX.utils.book_new();
+  const esMaq = _tipoActual === 'maquinaria';
+  const {data:e} = {data: _entradaActual};
+
+  // Fila de cabecera del documento
+  const meta = [
+    ['ENTRADA ALMACÉN — IDEA SCAN 2.0', '', '', '', '', '', '', '', ''],
+    ['Folio:', _folioActual, '', 'Operador:', _user.nombre||_user.username, '', 'Fecha:', new Date().toLocaleDateString('es-MX'), ''],
+    ['Tipo:', esMaq?'Maquinaria':'Materia Prima', '', 'Carrier:', document.getElementById('carrierSelect').value||'', '', 'Tipo Bulto:', _tipoBultoSeleccionado, ''],
+    ['Total Bultos:', _bultosData.length||1, '', 'Vendor:', _entradaActual?.vendor||'', '', 'Tracking:', document.getElementById('trackingInput').value||_trackingGlobal||'', ''],
+    []
+  ];
+
+  const headers = esMaq
+    ? ['Bulto #','PO','Part Number','Descripción','Origen','Cant. Piezas','Peso','Tracking','Vendor','Marca','Modelo','N° Serie']
+    : ['Bulto #','PO','Part Number','Descripción','Origen','Cant. Piezas','Peso','Tracking','Vendor'];
+
+  const rows = _renglonesFinal.map(r => esMaq
+    ? [r.bulto_num, r.po||'', r.pn||'', r.descripcion||'', r.origen||'', r.cantidad||1, r.weight||'', r.tracking_number||'', r.vendor||'', r.marca||'', r.modelo||'', r.numero_serie||'']
+    : [r.bulto_num, r.po||'', r.pn||'', r.descripcion||'', r.origen||'', r.cantidad||1, r.weight||'', r.tracking_number||'', r.vendor||'']
+  );
+
+  const data = [...meta, headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = headers.map((_,i) => ({wch: i===3?35:i===2||i===8?20:14}));
+  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:headers.length-1}}];
+  XLSX.utils.book_append_sheet(wb, ws, esMaq?'Maquinaria':'Materia Prima');
+
+  return new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+
+function descargarExcel() {
+  const blob = generarExcelBlob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`${_folioActual}.xlsx`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function verDocumento() {
+  // Buscar URL del Excel guardado
+  const {data:e} = await sb().from('cooper_entradas').select('excel_url').eq('id',_entradaConfirmadaId).single();
+  if (e?.excel_url) {
+    window.open(e.excel_url, '_blank');
+  } else {
+    // Descarga directa como fallback
+    descargarExcel();
+  }
+}
+
+function nuevaEntrada() {
+  _tipoActual = null; _entradaActual = null; _folioActual = null;
+  _bultosData = []; _renglonesFinal = []; _trackingGlobal = '';
+  document.getElementById('cardMP').classList.remove('selected');
+  document.getElementById('cardMAQ').classList.remove('selected');
+  document.getElementById('btnContinuarTipo').disabled = true;
+  showVista('tipo');
+}
+
+function volverDesdePreview() {
+  if (_tipoActual === 'materia_prima') showVista('mp');
+  else showVista('maq');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════
+async function subirFotos(fotos, prefijo) {
+  const urls = (await Promise.all(fotos.map(async (f, i) => {
+    const p = `${prefijo}/${Date.now()}_${i}.${f.file.name.split('.').pop()||'jpg'}`;
+    await sb().storage.from('imagenes').upload(p, f.file, {upsert:true});
+    const {data:u} = sb().storage.from('imagenes').getPublicUrl(p);
+    return u?.publicUrl || null;
+  }))).filter(Boolean);
+  return urls;
+}
+
+async function callAI(content, model='claude-haiku-4-5-20251001', maxTokens=1000) {
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 45000);
+  try {
+    const res = await fetch(ANTHROPIC_PROXY, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model, max_tokens: maxTokens, messages:[{role:'user', content}]}),
+      signal: ctrl.signal
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    return json.content?.[0]?.text || '{}';
+  } catch(err) {
+    if (err.name === 'AbortError') throw new Error('Tiempo de espera agotado (45s). Intenta con menos fotos.');
+    throw err;
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise(res => { const r=new FileReader(); r.onload=e=>res(e.target.result); r.readAsDataURL(file); });
+}
+
+function compressImage(dataUrl, modo='texto') {
+  const cfg = { texto:{max:2200,q:0.88}, normal:{max:1600,q:0.82}, thumb:{max:900,q:0.75} };
+  const {max,q} = cfg[modo]||cfg.texto;
+  return new Promise((res,rej) => {
+    const img = new Image();
+    img.onload = () => {
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if(w>max||h>max){ if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx=c.getContext('2d'); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg',q).split(',')[1]);
+    };
+    img.onerror=()=>rej(new Error('Error imagen')); img.src=dataUrl;
+  });
+}
+
+function verFoto(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').style.display = 'flex';
+}
+
+function showAI(t,s) { document.getElementById('aiOverlay').classList.add('show'); document.getElementById('aiText').textContent=t; document.getElementById('aiSub').textContent=s||''; }
+function hideAI()  { document.getElementById('aiOverlay').classList.remove('show'); }
+</script>
+</body>
+</html>
