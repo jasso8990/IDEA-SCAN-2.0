@@ -107,3 +107,114 @@ ALTER TABLE inventario   DISABLE ROW LEVEL SECURITY;
 ALTER TABLE entradas     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE salidas      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE actividad_log DISABLE ROW LEVEL SECURITY;
+
+-- ══ TABLAS MARTECH ═══════════════════════════════════════════════════════════
+-- Entradas de inspección para el cliente Martech Medical Products
+
+CREATE TABLE IF NOT EXISTS ideascan.martech_entradas (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  folio           text NOT NULL UNIQUE,
+  fecha           date NOT NULL DEFAULT CURRENT_DATE,
+  done_by         text,
+  inspected_by    text,
+  supplier        text,
+  invoice         text,
+  packing         text,
+  carrier         text,
+  plate           text,
+  total_bultos    integer DEFAULT 1,
+  tipo_bulto      text,
+  localizacion    text,
+  observaciones   text,
+  excel_url       text,
+  fotos_packing   jsonb DEFAULT '[]'::jsonb,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ideascan.martech_renglones (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entrada_id      uuid REFERENCES ideascan.martech_entradas(id) ON DELETE CASCADE,
+  folio           text,
+  pda             integer,
+  numero_parte    text,
+  po              text,
+  descripcion     text,
+  hts_fraccion    text,
+  cantidad        numeric,
+  um              text DEFAULT 'PCS',
+  peso_lbs        numeric,
+  bulk            integer DEFAULT 1,
+  tipo            text,
+  origen          text,
+  tracking        text,
+  seccion_negocio text,
+  brand_marca     text,
+  model_modelo    text,
+  serie           text,
+  observaciones   text,
+  created_at      timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_martech_entradas_fecha    ON ideascan.martech_entradas(fecha);
+CREATE INDEX IF NOT EXISTS idx_martech_entradas_folio    ON ideascan.martech_entradas(folio);
+CREATE INDEX IF NOT EXISTS idx_martech_renglones_entrada ON ideascan.martech_renglones(entrada_id);
+
+ALTER TABLE ideascan.martech_entradas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE ideascan.martech_renglones DISABLE ROW LEVEL SECURITY;
+
+
+-- ══ TABLAS COOPER ══════════════════════════════════════════════════════════
+-- Entradas de inspección para el cliente Cooper
+
+CREATE TABLE IF NOT EXISTS ideascan.cooper_entradas (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  folio           text NOT NULL UNIQUE,
+  fecha           date NOT NULL DEFAULT CURRENT_DATE,
+  done_by         text,
+  inspected_by    text,
+  supplier        text,
+  invoice         text,
+  packing         text,
+  carrier         text,
+  plate           text,
+  total_bultos    integer DEFAULT 1,
+  tipo_bulto      text,
+  localizacion    text,
+  observaciones   text,
+  excel_url       text,
+  fotos_packing   jsonb DEFAULT '[]'::jsonb,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ideascan.cooper_renglones (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  entrada_id      uuid REFERENCES ideascan.cooper_entradas(id) ON DELETE CASCADE,
+  folio           text,
+  pda             integer,
+  numero_parte    text,
+  po              text,
+  descripcion     text,
+  hts_fraccion    text,
+  cantidad        numeric,
+  um              text DEFAULT 'PCS',
+  peso_lbs        numeric,
+  bulk            integer DEFAULT 1,
+  tipo            text,
+  origen          text,
+  tracking        text,
+  seccion_negocio text,
+  brand_marca     text,
+  model_modelo    text,
+  serie           text,
+  observaciones   text,
+  created_at      timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cooper_entradas_fecha    ON ideascan.cooper_entradas(fecha);
+CREATE INDEX IF NOT EXISTS idx_cooper_entradas_folio    ON ideascan.cooper_entradas(folio);
+CREATE INDEX IF NOT EXISTS idx_cooper_renglones_entrada ON ideascan.cooper_renglones(entrada_id);
+
+ALTER TABLE ideascan.cooper_entradas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE ideascan.cooper_renglones DISABLE ROW LEVEL SECURITY;
