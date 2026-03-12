@@ -261,6 +261,16 @@ async function cargarInventario() {
   if(error){console.error(error);return;}
   _items = data||[];
   filtrar();
+  // Auto-abrir SKU si viene parámetro ?open=ID desde ai-martech/ai-cooper
+  const _urlParams = new URLSearchParams(location.search);
+  const _openId = _urlParams.get('open');
+  const _openFolio = _urlParams.get('folio');
+  if (_openId) {
+    abrirDetalle(_openId);
+  } else if (_openFolio) {
+    const found = _items.find(i => i.folio_entrada === _openFolio);
+    if (found) abrirDetalle(found.id);
+  }
 }
 
 function filtrar() {
