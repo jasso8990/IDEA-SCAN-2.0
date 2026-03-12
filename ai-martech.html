@@ -452,14 +452,20 @@ function showVista(v) {
 async function cargarEntradas() {
   const cont = document.getElementById('listaEntradas');
   cont.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div></div>';
-  let q = sb().from('martech_entradas').select('*').order('created_at', {ascending:false});
+  // Solo entradas del día en curso
+  const _hoyInicio = new Date(); _hoyInicio.setHours(0,0,0,0);
+  const _hoyFin = new Date(); _hoyFin.setHours(23,59,59,999);
+  let q = sb().from('martech_entradas').select('*')
+    .gte('created_at', _hoyInicio.toISOString())
+    .lte('created_at', _hoyFin.toISOString())
+    .order('created_at', {ascending:false});
   if (_filtro !== 'todos') {
     if (_filtro === 'borrador') q = q.eq('estado','borrador');
     else q = q.eq('tipo', _filtro);
   }
   const {data} = await q;
   if (!data?.length) {
-    cont.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-text">Sin entradas</div><div style="font-size:12px;color:var(--text-300);margin-top:6px;">Crea una nueva con el botón +</div></div>';
+    cont.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-text">Sin entradas hoy</div><div style="font-size:12px;color:var(--text-300);margin-top:6px;">Crea una nueva con el botón +</div></div>';
     return;
   }
   cont.innerHTML = data.map(e => {
@@ -493,8 +499,15 @@ function filtrarEntradas(f, el) {
 
 async function abrirEntrada(id) {
   const {data:e} = await sb().from('martech_entradas').select('*').eq('id',id).single();
-  const {data:renglones} = await sb().from('martech_renglones').select('*').eq('entrada_id',id).order('bulto_num');
   if (!e) return;
+  if (e.folio) {
+    const {data:inv} = await sb().from('inventario').select('id,sku').eq('folio_entrada', e.folio).maybeSingle();
+    if (inv?.id) {
+      window.location.href = 'inventario.html?open=' + inv.id;
+      return;
+    }
+  }
+  const {data:renglones} = await sb().from('martech_renglones').select('*').eq('entrada_id',id).order('bulto_num');
   _entradaActual = e;
   _renglonesFinal = renglones || [];
   _entradaConfirmadaId = id;
