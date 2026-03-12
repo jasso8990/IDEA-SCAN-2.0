@@ -25,7 +25,7 @@ async function loginWithCredentials(username, password) {
   const { data, error } = await sb()
     .from('usuarios')
     .select('id, nombre, username, rol, cliente_id, almacen_id, color, password_hash, clientes(nombre)')
-    .eq('username', username.trim().toLowerCase())
+    .ilike('username', username.trim())
     .eq('estado', 'active')
     .single();
 
