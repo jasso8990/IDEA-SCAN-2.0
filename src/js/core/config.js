@@ -43,6 +43,7 @@ function getNavItems(user) {
      const rol = user?.rol || 'operador';
      const clienteN = (user?.cliente_nombre || '').toLowerCase();
      const esMartech = clienteN.includes('martech');
+     const esCooper  = clienteN.includes('cooper');
      const esSafran  = clienteN.includes('safran');
      const esAdmin   = rol === 'admin';
      const esCliente = rol === 'cliente';
@@ -56,13 +57,17 @@ function getNavItems(user) {
   // IA Scan: admin, usuarios Safran, y operadores/supervisores SIN cliente (internos CCA)
   // Martech NUNCA ve IA Scan
   const esInternoSinCliente = !user?.cliente_id;
-     if (!esMartech && (esAdmin || esSafran || esInternoSinCliente)) {
+     if (!esMartech && !esCooper && (esAdmin || esSafran || esInternoSinCliente)) {
             base.push({ id:'ai_entry', icon:'🤖', label:'IA Scan', href:'ai-entry.html' });
      }
 
   // AI Martech: solo admin y usuarios con cliente Martech
   if (esAdmin || esMartech) {
          base.push({ id:'ai_martech', icon:'🟠', label:'AI Martech', href:'ai-martech.html' });
+  }
+  // AI Cooper: solo admin y usuarios con cliente Cooper
+  if (esAdmin || esCooper) {
+    base.push({ id:'ai_cooper', icon:'🟢', label:'AI Cooper', href:'ai-cooper.html' });
   }
 
   // Salidas y Paquetería
