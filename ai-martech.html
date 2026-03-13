@@ -419,6 +419,7 @@ let _folioActual = null;
 let _fotosActualesBulto = [];    // fotos del bulto que se está procesando
 let _fotosB64ActualesBulto = [];
 let _bultosData = [];            // [{num, fotos_urls, renglones:[...]}]
+let _numBultosTotal  = 0;           // bultos totales del envío (carrier label)
 let _trackingGlobal = '';        // primer tracking detectado
 
 // MAQ
@@ -547,7 +548,7 @@ async function iniciarEntrada() {
   _entradaActual = entrada;
 
   // Reset estado
-  _bultosData = []; _fotosActualesBulto = []; _fotosB64ActualesBulto = [];
+  _bultosData = []; _fotosActualesBulto = []; _fotosB64ActualesBulto = []; _numBultosTotal = 0;
   _trackingGlobal = ''; _renglonesMaq = [];
   _fotasPackingB64 = []; _fotosPackingUrls = [];
   _fotasPiezaActualB64 = []; _fotasPiezaActualUrls = [];
@@ -707,6 +708,7 @@ REGLAS CRÍTICAS:
       origen: normalizarOrigen(r.origen),
       cantidad: parseInt(r.cantidad) || 1
     }));
+    if (d.num_bultos) _numBultosTotal = Math.max(_numBultosTotal, parseInt(d.num_bultos)||0);
 
     if (!renglones.length) {
       hideAI();
@@ -861,6 +863,7 @@ REGLAS CRÍTICAS:
       completado: false,
       fotos: []
     }));
+    if (d.num_bultos) _numBultosTotal = Math.max(_numBultosTotal, parseInt(d.num_bultos)||0);
 
     if (!_trackingGlobal && d.tracking_number) _trackingGlobal = d.tracking_number;
     if (!_entradaActual.vendor && d.vendor) {
@@ -1135,12 +1138,46 @@ async function confirmarEntrada() {
       tipo_bulto: _tipoBultoSeleccionado,
       carrier: carrier || null,
       tracking_number: tracking || _trackingGlobal || null,
-      total_bultos: _bultosData.length || 1,
+      total_bultos: Math.max(_bultosData.length || 1, _numBultosTotal || 0),
       excel_url: xlsxUrl?.publicUrl || null
     }).eq('id', _entradaActual.id).select('id').single();
 
     _entradaConfirmadaId = _entradaActual.id;
     hideAI();
+
+    // ── Registrar en inventario (para que aparezca en vista principal) ──
+    try {
+      const _clienteIdMartech = '69dfc73d-6811-4aab-a51d-eab3af23563e'; // Martech
+      const {data:_invExist} = await sb().from('inventario').select('id').eq('folio_entrada',_folioActual).maybeSingle();
+      if (!_invExist) {
+        const _primera = (_renglonesFinal||[])[0] || {};
+        const _primeraParteParts = (_renglonesFinal||[]).map(r=>({
+          pn: r.pn||r.numero_parte||'', desc: r.descripcion||'',
+          cant: parseInt(r.cantidad||r.cantidad_piezas)||1,
+          po: r.po||'', peso: r.weight||r.peso_lbs||''
+        }));
+        await sb().from('inventario').insert({
+          sku: _folioActual,
+          folio_entrada: _folioActual,
+          descripcion: _primera.descripcion || 'Entrada Martech',
+          numero_parte: _primera.pn || _primera.numero_parte || null,
+          cliente_id: _clienteIdMartech,
+          cantidad: (_renglonesFinal||[]).reduce((a,r)=>a+(parseInt(r.cantidad||r.cantidad_piezas)||1),0),
+          bultos: Math.max(_bultosData.length||1, _numBultosTotal||0),
+          carrier: carrier || _entradaActual?.carrier || null,
+          vendor: _entradaActual?.vendor || null,
+          tracking_number: tracking || _trackingGlobal || null,
+          po: _primera.po || null,
+          origin: _primera.origen || null,
+          fecha_entrada: new Date().toISOString().substring(0,10),
+          activo: true,
+          estado: 'recibido',
+          tipo_bulto: _tipoBultoSeleccionado || null,
+          partes: JSON.parse(JSON.stringify(_primeraParteParts)),
+          imagenes: (_bultosData||[]).flatMap(b=>b.fotos_urls||[])
+        });
+      }
+    } catch(_invErr) { console.warn('inventario insert warn:', _invErr.message); }
 
     // Actualizar renglones finales para descarga local
     const {data:renglones} = await sb().from('martech_renglones').select('*').eq('entrada_id', _entradaActual.id);
