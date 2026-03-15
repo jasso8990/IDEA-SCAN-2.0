@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 — Portal Cliente</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Poppins',sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh;}
+/* ── AUTH SCREEN ── */
+#auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0d2b7a 0%,#1e40af 50%,#0d2b7a 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.auth-card{background:#fff;border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo svg{width:48px;height:48px;margin-bottom:10px;}
+.auth-logo h1{font-size:20px;font-weight:700;color:#0d2b7a;}
+.auth-logo p{font-size:12px;color:#64748b;margin-top:2px;}
+.auth-form .form-group{margin-bottom:16px;}
+.auth-form label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.auth-form input{width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;color:#1e293b;outline:none;transition:border-color .2s;}
+.auth-form input:focus{border-color:#0d2b7a;}
+.btn-auth{width:100%;background:#0d2b7a;color:#fff;border:none;padding:12px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;margin-top:8px;}
+.btn-auth:hover{background:#0a2260;}
+.btn-auth:disabled{background:#94a3b8;cursor:not-allowed;}
+.auth-magic{text-align:center;margin-top:16px;font-size:12px;color:#64748b;}
+.auth-magic a{color:#0d2b7a;font-weight:600;cursor:pointer;text-decoration:none;}
+.auth-err{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:12px;display:none;}
+/* ── APP SHELL ── */
+#app{display:none;}
+.top-nav{background:#0d2b7a;color:#fff;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;}
+.nav-brand svg{width:28px;height:28px;}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.client-badge{background:rgba(255,255,255,.15);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.safran-badge{background:#f59e0b;color:#1e293b;}
+.btn-logout{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:6px 14px;border-radius:6px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-logout:hover{background:rgba(255,255,255,.2);}
+/* ── TAB NAV ── */
+.tab-nav{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;display:flex;gap:0;}
+.tab-item{padding:14px 20px;font-size:13px;font-weight:500;color:#64748b;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;gap:7px;white-space:nowrap;}
+.tab-item:hover{color:#0d2b7a;}
+.tab-item.active{color:#0d2b7a;border-bottom-color:#0d2b7a;font-weight:600;}
+.tab-item .badge-count{background:#ef4444;color:#fff;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;}
+/* ── CONTENT ── */
+.content{padding:24px;max-width:1200px;margin:0 auto;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+/* ── SUMMARY CARDS ── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
+.stat-card{background:#fff;border-radius:12px;padding:20px;border:1px solid #e2e8f0;display:flex;flex-direction:column;gap:4px;transition:box-shadow .2s;}
+.stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);}
+.stat-card .label{font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;}
+.stat-card .value{font-size:28px;font-weight:700;color:#1e293b;line-height:1;}
+.stat-card .sub{font-size:11px;color:#64748b;margin-top:2px;}
+.stat-card .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.stat-card.alert-card{border-color:#fca5a5;background:#fef2f2;}
+.stat-card.alert-card .value{color:#ef4444;}
+.stat-card.ok-card .icon{background:#dcfce7;}
+.stat-card.warn-card .icon{background:#fef9c3;}
+.stat-card.red-card .icon{background:#fee2e2;}
+.stat-card.blue-card .icon{background:#dbeafe;}
+/* ── SEARCH + FILTER BAR ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.search-box{flex:1;min-width:220px;position:relative;}
+.search-box input{width:100%;padding:9px 12px 9px 36px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+.search-box input:focus{border-color:#0d2b7a;}
+.search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;}
+.filter-select{padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;color:#475569;outline:none;background:#fff;cursor:pointer;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .2s;}
+.btn-primary{background:#0d2b7a;color:#fff;}
+.btn-primary:hover{background:#0a2260;}
+.btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;}
+.btn-secondary:hover{background:#e2e8f0;}
+.btn-success{background:#16a34a;color:#fff;}
+.btn-success:hover{background:#15803d;}
+.btn-disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border:1px solid #e2e8f0;}
+.btn-sm{padding:5px 10px;font-size:11px;}
+/* ── DATA TABLE ── */
+.table-wrap{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;}
+.table-header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e8f0;}
+.table-title{font-size:14px;font-weight:600;color:#1e293b;}
+.table-sub{font-size:11px;color:#64748b;margin-top:1px;}
+table.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+table.data-table th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+table.data-table td{padding:10px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle;color:#1e293b;}
+table.data-table tr:last-child td{border-bottom:none;}
+table.data-table tr:hover td{background:#f8fafc;}
+.empty-state{text-align:center;padding:48px 24px;color:#94a3b8;}
+.empty-state svg{margin:0 auto 12px;display:block;}
+/* ── STATUS CHIPS ── */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;}
+.chip-green{background:#dcfce7;color:#166534;}
+.chip-red{background:#fee2e2;color:#991b1b;}
+.chip-yellow{background:#fef9c3;color:#92400e;}
+.chip-blue{background:#dbeafe;color:#1e40af;}
+.chip-grey{background:#f1f5f9;color:#475569;}
+.chip-orange{background:#ffedd5;color:#9a3412;}
+/* ── SLA BAR ── */
+.sla-bar{display:flex;flex-direction:column;gap:3px;min-width:80px;}
+.sla-track{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;}
+.sla-fill{height:100%;border-radius:3px;transition:width .3s;}
+.sla-ok{background:#16a34a;}
+.sla-warn{background:#f59e0b;}
+.sla-over{background:#ef4444;}
+/* ── FOLIO CARDS (reception history) ── */
+.folio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:8px;}
+.folio-card{background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:16px;cursor:pointer;transition:all .2s;position:relative;}
+.folio-card:hover{border-color:#0d2b7a;box-shadow:0 4px 12px rgba(13,43,122,.1);transform:translateY(-1px);}
+.folio-card .folio-num{font-size:16px;font-weight:700;color:#0d2b7a;margin-bottom:6px;font-family:monospace;letter-spacing:1px;}
+.folio-card .folio-meta{font-size:11px;color:#64748b;display:flex;flex-direction:column;gap:3px;}
+.folio-card .folio-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.disc-indicator{position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:#ef4444;}
+/* ── MODAL ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+#modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:760px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;animation:modalIn .2s ease;}
+@keyframes modalIn{from{opacity:0;transform:scale(.95);}to{opacity:1;transform:scale(1);}}
+.modal-header{padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:16px;font-weight:700;color:#0d2b7a;}
+.modal-close{width:32px;height:32px;border-radius:6px;background:#f1f5f9;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:#475569;}
+.modal-close:hover{background:#e2e8f0;}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1;}
+.modal-section{margin-bottom:20px;}
+.modal-section-title{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.detail-item{background:#f8fafc;border-radius:8px;padding:10px 12px;}
+.detail-item label{font-size:10px;color:#94a3b8;display:block;margin-bottom:3px;text-transform:uppercase;}
+.detail-item .val{font-size:13px;font-weight:600;color:#1e293b;}
+/* ── PHOTO GALLERY ── */
+.photo-gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.photo-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;cursor:pointer;transition:opacity .2s;}
+.photo-thumb:hover{opacity:.85;}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;}
+.photo-thumb .no-photo{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8fafc;font-size:10px;color:#94a3b8;gap:4px;}
+/* ── DISCREPANCY LIST ── */
+.disc-list{display:flex;flex-direction:column;gap:6px;}
+.disc-item{padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#991b1b;display:flex;align-items:flex-start;gap:6px;}
+/* ── LOADING ── */
+#page-loader{position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:9000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+#page-loader.show{display:flex;}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#0d2b7a;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* ── TOAST ── */
+#toast-box{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{padding:10px 16px;border-radius:8px;color:#fff;font-size:12px;font-weight:500;min-width:240px;animation:slideIn .25s ease;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.toast.success{background:#16a34a;}.toast.error{background:#ef4444;}.toast.warning{background:#f59e0b;}.toast.info{background:#0d2b7a;}
+@keyframes slideIn{from{transform:translateX(110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+/* ── CHART AREA ── */
+.chart-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:20px;margin-bottom:20px;}
+.chart-title{font-size:13px;font-weight:600;color:#1e293b;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.bar-chart{display:flex;gap:6px;align-items:flex-end;height:80px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
+.bar{width:100%;border-radius:4px 4px 0 0;background:#0d2b7a;transition:height .4s ease;min-height:4px;}
+.bar-label{font-size:9px;color:#94a3b8;white-space:nowrap;}
+.bar-val{font-size:9px;color:#475569;font-weight:600;}
+/* ── PAGINATION ── */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid #f1f5f9;font-size:12px;color:#64748b;}
+.pagination-btns{display:flex;gap:6px;}
+.page-btn{padding:4px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;font-family:'Poppins',sans-serif;font-size:11px;cursor:pointer;}
+.page-btn:hover{background:#f1f5f9;}.page-btn.active{background:#0d2b7a;color:#fff;border-color:#0d2b7a;}
+@media(max-width:640px){.cards-grid{grid-template-columns:1fr 1fr;}.detail-grid{grid-template-columns:1fr;}.photo-gallery{grid-template-columns:repeat(2,1fr);}.folio-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="page-loader"><div class="spinner"></div><span style="font-size:12px;color:#475569;" id="loader-text">Cargando…</span></div>
+<div id="toast-box"></div>
+
+<!-- ════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="48" height="48" rx="12" fill="#0d2b7a"/>
+        <path d="M12 16h24M12 24h16M12 32h20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h1>IDEA SCAN 2.0</h1>
+      <p>Portal de Cliente — Acceso Seguro</p>
+    </div>
+    <div id="auth-error" class="auth-err"></div>
+    <!-- Login Form -->
+    <div id="form-login">
+      <div class="auth-form">
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <input type="email" id="inp-email" placeholder="tu@empresa.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="inp-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginWithPassword()">
+        </div>
+        <button class="btn-auth" id="btn-login" onclick="loginWithPassword()">Iniciar Sesión</button>
+      </div>
+      <div class="auth-magic">
+        <a onclick="showMagicForm()">Acceder con link de correo (passwordless)</a>
+      </div>
+    </div>
+    <!-- Magic Link Form -->
+    <div id="form-magic" style="display:none;">
+      <div class="auth-form">
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <input type="email" id="inp-magic-email" placeholder="tu@empresa.com">
+        </div>
+        <button class="btn-auth" id="btn-magic" onclick="sendMagicLink()">Enviar Link de Acceso</button>
+      </div>
+      <div class="auth-magic" id="magic-sent" style="display:none;color:#16a34a;font-weight:600;">
+        ✓ Link enviado. Revisa tu correo.
+      </div>
+      <div class="auth-magic">
+        <a onclick="showLoginForm()">← Volver al login</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     MAIN APP (shown after auth)
+════════════════════════════════ -->
+<div id="app">
+  <!-- TOP NAV -->
+  <nav class="top-nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="white" fill-opacity=".15"/><path d="M6 9h16M6 14h11M6 19h13" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+      IDEA SCAN 2.0
+    </div>
+    <div class="nav-right">
+      <div class="client-badge" id="client-badge-nav">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        <span id="nav-client-name">Cliente</span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </nav>
+
+  <!-- TAB NAV -->
+  <div class="tab-nav">
+    <div class="tab-item active" id="tab-btn-dashboard" onclick="switchTab('dashboard')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Resumen
+    </div>
+    <div class="tab-item" id="tab-btn-inventario" onclick="switchTab('inventario')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Inventario
+    </div>
+    <div class="tab-item" id="tab-btn-recepciones" onclick="switchTab('recepciones')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Recepciones
+      <span class="badge-count" id="disc-badge" style="display:none;">!</span>
+    </div>
+    <div class="tab-item" id="tab-btn-alertas" onclick="switchTab('alertas')">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      Alertas SLA
+      <span class="badge-count" id="alert-badge" style="display:none;"></span>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- ══════════════════════════════════
+         TAB: DASHBOARD / RESUMEN
+    ══════════════════════════════════ -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <div class="cards-grid" id="stats-cards">
+        <div class="stat-card blue-card">
+          <div class="icon"><svg width="18" height="18" fill="none" stroke="#1d4ed8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div>
+          <div class="label">Total SKUs en Almacén</div>
+          <div class="value" id="stat-skus">—</div>
+          <div class="sub" id="stat-skus-sub">Artículos activos</div>
+        </div>
+        <div class="stat-card ok-card">
+          <div class="icon"><svg width="18" height="18" fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <div class="label">Recepciones Totales</div>
+          <div class="value" id="stat-recs">—</div>
+          <div class="sub" id="stat-recs-sub">Folios generados</div>
+        </div>
+        <div class="stat-card warn-card">
+          <div class="icon"><svg width="18" height="18" fill="none" stroke="#92400e" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <div class="label">Días Prom. en Almacén</div>
+          <div class="value" id="stat-dias">—</div>
+          <div class="sub">Tiempo promedio de estancia</div>
+        </div>
+        <div class="stat-card red-card" id="sla-card" style="display:none;">
+          <div class="icon"><svg width="18" height="18" fill="none" stroke="#991b1b" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+          <div class="label">Alertas SLA Activas</div>
+          <div class="value" id="stat-alertas">0</div>
+          <div class="sub">Artículos fuera de plazo</div>
+        </div>
+      </div>
+
+      <!-- Movement chart -->
+      <div class="chart-card">
+        <div class="chart-title">
+          <span>Movimientos — Últimos 6 meses</span>
+          <span style="font-size:11px;color:#64748b;" id="chart-subtitle"></span>
+        </div>
+        <div class="bar-chart" id="bar-chart"></div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <div><div class="table-title">Últimas Recepciones</div><div class="table-sub">Las 5 entradas más recientes</div></div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Folio</th><th>Tipo</th><th>SKUs</th><th>Fecha</th><th>Estado</th></tr></thead>
+          <tbody id="recent-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8;">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         TAB: INVENTARIO
+    ══════════════════════════════════ -->
+    <div class="tab-panel" id="tab-inventario">
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" id="inv-search" placeholder="Buscar por SKU, descripción o folio…" oninput="filterInventario()">
+        </div>
+        <select class="filter-select" id="inv-filter-estado" onchange="filterInventario()">
+          <option value="">Todos los estados</option>
+          <option value="disponible">Disponible</option>
+          <option value="agotado">Agotado</option>
+        </select>
+        <select class="filter-select" id="inv-filter-tipo" onchange="filterInventario()">
+          <option value="">Todos los tipos</option>
+          <option value="materia_prima">Materia Prima</option>
+          <option value="maquinaria">Maquinaria</option>
+          <option value="consumibles">Consumibles</option>
+          <option value="devolucion">Devolución</option>
+        </select>
+        <button class="btn" id="btn-export-excel" onclick="exportInventarioExcel()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Exportar Excel
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="loadInventario()">↻ Actualizar</button>
+      </div>
+      <div id="safran-notice" style="display:none;background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400e;">
+        <strong>Nota Safran:</strong> La exportación a Excel está deshabilitada para su cuenta según las reglas de negocio vigentes.
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <div>
+            <div class="table-title">Inventario en Tiempo Real</div>
+            <div class="table-sub" id="inv-count-label">Cargando artículos…</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:#94a3b8;">Página</span>
+            <div class="pagination-btns" id="inv-page-btns"></div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Descripción</th>
+                <th>Cantidad</th>
+                <th>U/M</th>
+                <th>Ubicación</th>
+                <th>Tipo Carga</th>
+                <th>Folio SAF</th>
+                <th>Días Almacén</th>
+                <th>SLA</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="inv-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8;">Cargando inventario…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="inv-pagination"></div>
+      </div>
+    </div>
+    <!-- ══════════════════════════════════
+         TAB: RECEPCIONES (Folio History)
+    ══════════════════════════════════ -->
+    <div class="tab-panel" id="tab-recepciones">
+      <div class="filter-bar">
+        <div class="search-box">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" id="rec-search" placeholder="Buscar folio, proveedor…" oninput="filterRecepciones()">
+        </div>
+        <select class="filter-select" id="rec-filter-tipo" onchange="filterRecepciones()">
+          <option value="">Todos los tipos</option>
+          <option value="materia_prima">Materia Prima</option>
+          <option value="maquinaria">Maquinaria</option>
+          <option value="consumibles">Consumibles</option>
+          <option value="devolucion">Devolución</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadRecepciones()">↻ Actualizar</button>
+      </div>
+      <div style="margin-bottom:8px;font-size:12px;color:#64748b;" id="rec-count-label">Cargando recepciones…</div>
+      <div class="folio-grid" id="folio-grid">
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">
+          <div class="spinner" style="margin:0 auto 10px;"></div>
+          Cargando historial…
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         TAB: ALERTAS SLA
+    ══════════════════════════════════ -->
+    <div class="tab-panel" id="tab-alertas">
+      <div class="table-wrap">
+        <div class="table-header">
+          <div>
+            <div class="table-title">Alertas de SLA Activas</div>
+            <div class="table-sub">Artículos cuyo tiempo en almacén supera el umbral acordado</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadAlertas()">↻ Actualizar</button>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Descripción</th>
+              <th>Días en Almacén</th>
+              <th>SLA Umbral</th>
+              <th>Exceso</th>
+              <th>Ubicación</th>
+              <th>Folio SAF</th>
+              <th>Nivel</th>
+            </tr>
+          </thead>
+          <tbody id="alertas-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8;">Cargando alertas…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end .content -->
+</div><!-- end #app -->
+
+<!-- ════════════════════════════════
+     MODAL — DETALLE DE RECEPCIÓN
+════════════════════════════════ -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-folio-title">—</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px;" id="modal-folio-date"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Meta info grid -->
+      <div class="modal-section">
+        <div class="modal-section-title">Información General</div>
+        <div class="detail-grid" id="modal-detail-grid"></div>
+      </div>
+      <!-- SKU breakdown table -->
+      <div class="modal-section" id="modal-sku-section">
+        <div class="modal-section-title">Artículos Registrados (<span id="modal-sku-count">0</span>)</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>SKU</th><th>Descripción</th><th>Cantidad</th><th>U/M</th><th>Ubicación</th></tr></thead>
+            <tbody id="modal-sku-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Discrepancies -->
+      <div class="modal-section" id="modal-disc-section" style="display:none;">
+        <div class="modal-section-title" style="color:#991b1b;">⚠ Discrepancias Registradas</div>
+        <div class="disc-list" id="modal-disc-list"></div>
+      </div>
+      <!-- Packing slip photos -->
+      <div class="modal-section" id="modal-photos-section">
+        <div class="modal-section-title">Fotos de Documentos (Packing Slips)</div>
+        <div class="photo-gallery" id="modal-photo-gallery"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════
+const SB_URL  = 'https://usqugtxeynkozlobeojt.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzcXVndHhleW5rb3psb2Jlb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwMjA3ODgsImV4cCI6MjA1ODU5Njc4OH0.1mrnLfb_DU1LkLtKUPo2xRkpF_OzfmVTkM-jtR1mroc';
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+const appState = {
+  session: null,
+  cliente: null,         // { id, nombre, codigo, sla_dias }
+  isSafran: false,
+  inventario: [],        // full list from DB
+  inventarioFiltered: [],
+  recepciones: [],
+  recepcionesFiltered: [],
+  alertas: [],
+  invPage: 1,
+  invPageSize: 20,
+  accessToken: null
+};
+
+// ═══════════════════════════════════════════════════
+// SUPABASE REST HELPER (uses session access token)
+// ═══════════════════════════════════════════════════
+async function sbFetch(table, params = {}, token = null) {
+  const qs = new URLSearchParams(params).toString();
+  const url = SB_URL + '/rest/v1/' + table + (qs ? '?' + qs : '');
+  const auth = token || appState.accessToken || SB_ANON;
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SB_ANON,
+      'Authorization': 'Bearer ' + auth,
+      'Accept-Profile': 'ideascan',
+      'Range-Unit': 'items'
+    }
+  });
+  if (!res.ok) throw new Error('sbFetch ' + table + ': ' + await res.text());
+  return res.json();
+}
+
+async function sbAuth(path, body, method = 'POST') {
+  const res = await fetch(SB_URL + '/auth/v1/' + path, {
+    method,
+    headers: { 'apikey': SB_ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function toast(msg, type = 'info', dur = 4000) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = (type==='success'?'✓':type==='error'?'✕':type==='warning'?'⚠':'ℹ') + ' ' + msg;
+  document.getElementById('toast-box').appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, dur);
+}
+
+function showLoader(txt = 'Cargando…') { document.getElementById('loader-text').textContent = txt; document.getElementById('page-loader').classList.add('show'); }
+function hideLoader() { document.getElementById('page-loader').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════
+function showMagicForm() { document.getElementById('form-login').style.display='none'; document.getElementById('form-magic').style.display='block'; }
+function showLoginForm() { document.getElementById('form-magic').style.display='none'; document.getElementById('form-login').style.display='block'; }
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function loginWithPassword() {
+  const email = document.getElementById('inp-email').value.trim();
+  const password = document.getElementById('inp-password').value;
+  if (!email || !password) { showAuthError('Completa tu correo y contraseña.'); return; }
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Autenticando…';
+  document.getElementById('auth-error').style.display = 'none';
+  try {
+    const data = await sbAuth('token?grant_type=password', { email, password });
+    if (data.error || !data.access_token) throw new Error(data.error_description || data.error || 'Error de autenticación');
+    await startSession(data);
+  } catch (e) {
+    showAuthError(e.message);
+    btn.disabled = false; btn.textContent = 'Iniciar Sesión';
+  }
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('inp-magic-email').value.trim();
+  if (!email) { showAuthError('Ingresa tu correo electrónico.'); return; }
+  const btn = document.getElementById('btn-magic');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const data = await sbAuth('magiclink', { email });
+    if (data.error) throw new Error(data.error_description || data.error);
+    document.getElementById('magic-sent').style.display = 'block';
+  } catch (e) {
+    showAuthError(e.message);
+  }
+  btn.disabled = false; btn.textContent = 'Enviar Link de Acceso';
+}
+
+async function checkExistingSession() {
+  showLoader('Verificando sesión…');
+  try {
+    // Check URL for magic link token
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const at = params.get('access_token');
+      const rt = params.get('refresh_token');
+      if (at) {
+        const verifyRes = await fetch(SB_URL + '/auth/v1/user', {
+          headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + at }
+        });
+        if (verifyRes.ok) {
+          const user = await verifyRes.json();
+          await startSession({ access_token: at, refresh_token: rt, user });
+          history.replaceState(null, '', window.location.pathname);
+          return;
+        }
+      }
+    }
+    // Try localStorage session
+    const stored = localStorage.getItem('idescan_session');
+    if (stored) {
+      const sess = JSON.parse(stored);
+      if (sess.access_token && sess.expires_at > Date.now() / 1000) {
+        await startSession(sess);
+        return;
+      }
+    }
+    hideLoader();
+  } catch (e) {
+    console.warn('Session check error:', e);
+    hideLoader();
+  }
+}
+
+async function startSession(sessionData) {
+  appState.session = sessionData;
+  appState.accessToken = sessionData.access_token;
+  localStorage.setItem('idescan_session', JSON.stringify({
+    ...sessionData,
+    expires_at: sessionData.expires_at || (Date.now() / 1000 + 3600)
+  }));
+  showLoader('Cargando tu portal…');
+  try {
+    await loadClienteProfile(sessionData.user?.id || sessionData.user?.sub);
+    launchApp();
+  } catch (e) {
+    console.error('startSession error:', e);
+    showAuthError('Error al cargar perfil: ' + e.message);
+    hideLoader();
+  }
+}
+
+async function loadClienteProfile(authUserId) {
+  // Find cliente by auth_user_id
+  let clientes = [];
+  if (authUserId) {
+    try {
+      clientes = await sbFetch('clientes', { select: 'id,nombre,codigo,sla_dias', 'auth_user_id': 'eq.' + authUserId }, appState.accessToken);
+    } catch {}
+  }
+  // Fallback: get first available (dev mode)
+  if (!clientes || clientes.length === 0) {
+    clientes = await sbFetch('clientes', { select: 'id,nombre,codigo,sla_dias', limit: 1 }, SB_ANON);
+  }
+  if (!clientes || clientes.length === 0) throw new Error('No se encontró perfil de cliente');
+  appState.cliente = clientes[0];
+  appState.isSafran = (clientes[0].codigo || '').toUpperCase().startsWith('SAF');
+}
+
+function launchApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  hideLoader();
+  const name = appState.cliente?.nombre || 'Cliente';
+  document.getElementById('nav-client-name').textContent = name;
+  const badge = document.getElementById('client-badge-nav');
+  if (appState.isSafran) badge.classList.add('safran-badge');
+  // Apply Safran Excel restriction
+  applyExcelRestriction();
+  // Load all data
+  loadDashboard();
+  loadInventario();
+  loadRecepciones();
+  loadAlertas();
+}
+
+function applyExcelRestriction() {
+  const btn = document.getElementById('btn-export-excel');
+  const notice = document.getElementById('safran-notice');
+  if (appState.isSafran) {
+    btn.className = 'btn btn-disabled';
+    btn.onclick = () => toast('Exportación Excel deshabilitada para Safran según reglas de negocio', 'warning');
+    notice.style.display = 'block';
+  } else {
+    btn.className = 'btn btn-success';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('idescan_session');
+  appState.session = null; appState.accessToken = null; appState.cliente = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('inp-email').value = '';
+  document.getElementById('inp-password').value = '';
+  toast('Sesión cerrada correctamente', 'info', 2500);
+}
+
+// ═══════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════
+function switchTab(name) {
+  ['dashboard','inventario','recepciones','alertas'].forEach(t => {
+    document.getElementById('tab-' + t)?.classList.remove('active');
+    document.getElementById('tab-btn-' + t)?.classList.remove('active');
+  });
+  document.getElementById('tab-' + name)?.classList.add('active');
+  document.getElementById('tab-btn-' + name)?.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const cid = appState.cliente?.id;
+    const inv = await sbFetch('inventario', { select: 'id,sku,cantidad,creado_en,estado', 'cliente_id': 'eq.' + cid, 'estado': 'eq.disponible' });
+    const recs = await sbFetch('recepciones', { select: 'id,folio,tipo_carga,total_skus,status,creado_en', 'cliente_id': 'eq.' + cid, order: 'creado_en.desc', limit: 5 });
+    const totalInv = await sbFetch('inventario', { select: 'id', 'cliente_id': 'eq.' + cid });
+
+    document.getElementById('stat-skus').textContent = totalInv.length;
+    document.getElementById('stat-skus-sub').textContent = inv.filter(i => i.estado === 'disponible').length + ' disponibles';
+    document.getElementById('stat-recs').textContent = recs.length;
+    document.getElementById('stat-recs-sub').textContent = 'En tu historial';
+
+    // Average days
+    const now = Date.now();
+    const dias = inv.map(i => Math.floor((now - new Date(i.creado_en).getTime()) / 86400000));
+    const avg = dias.length > 0 ? Math.round(dias.reduce((a,b)=>a+b,0)/dias.length) : 0;
+    document.getElementById('stat-dias').textContent = avg + 'd';
+
+    // Chart: group by month
+    buildChart(inv);
+
+    // Recent recepciones
+    const tbody = document.getElementById('recent-tbody');
+    if (recs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8;">No hay recepciones registradas aún</td></tr>';
+    } else {
+      tbody.innerHTML = recs.slice(0,5).map(r => {
+        const d = new Date(r.creado_en).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+        return '<tr><td style="font-weight:700;color:#0d2b7a;font-family:monospace;">' + r.folio + '</td>' +
+          '<td>' + tipoLabel(r.tipo_carga) + '</td>' +
+          '<td>' + (r.total_skus || '—') + '</td><td>' + d + '</td>' +
+          '<td><span class="chip chip-green">Completado</span></td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('loadDashboard:', e);
+    toast('Error cargando resumen: ' + e.message, 'error');
+  }
+}
+
+function buildChart(inv) {
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: d.toLocaleString('es-MX',{month:'short'}) });
+  }
+  const counts = {};
+  months.forEach(m => counts[m.key] = 0);
+  inv.forEach(i => {
+    const k = i.creado_en?.substring(0,7);
+    if (counts[k] !== undefined) counts[k]++;
+  });
+  const max = Math.max(...Object.values(counts), 1);
+  const chart = document.getElementById('bar-chart');
+  chart.innerHTML = months.map(m => {
+    const val = counts[m.key] || 0;
+    const pct = Math.round((val / max) * 100);
+    return '<div class="bar-col"><div class="bar-val">' + val + '</div><div class="bar" style="height:' + Math.max(pct, 4) + '%;"></div><div class="bar-label">' + m.label + '</div></div>';
+  }).join('');
+  document.getElementById('chart-subtitle').textContent = appState.cliente?.nombre || '';
+}
+
+// ═══════════════════════════════════════════════════
+// INVENTARIO
+// ═══════════════════════════════════════════════════
+async function loadInventario() {
+  try {
+    const cid = appState.cliente?.id;
+    const data = await sbFetch('inventario', { select: 'id,folio,sku,descripcion,cantidad,unidad,ubicacion,tipo_carga,estado,creado_en', 'cliente_id': 'eq.' + cid, order: 'creado_en.desc' });
+    appState.inventario = data;
+    appState.inventarioFiltered = data;
+    renderInventario();
+    document.getElementById('inv-count-label').textContent = data.length + ' artículos en inventario';
+  } catch (e) {
+    console.error('loadInventario:', e);
+    document.getElementById('inv-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:#ef4444;">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+function filterInventario() {
+  const search = document.getElementById('inv-search').value.toLowerCase();
+  const estado = document.getElementById('inv-filter-estado').value;
+  const tipo = document.getElementById('inv-filter-tipo').value;
+  appState.inventarioFiltered = appState.inventario.filter(i => {
+    const matchSearch = !search || (i.sku||'').toLowerCase().includes(search) || (i.descripcion||'').toLowerCase().includes(search) || (i.folio||'').toLowerCase().includes(search);
+    const matchEstado = !estado || i.estado === estado;
+    const matchTipo = !tipo || i.tipo_carga === tipo;
+    return matchSearch && matchEstado && matchTipo;
+  });
+  appState.invPage = 1;
+  renderInventario();
+}
+
+function renderInventario() {
+  const data = appState.inventarioFiltered;
+  const page = appState.invPage;
+  const size = appState.invPageSize;
+  const start = (page - 1) * size;
+  const pageData = data.slice(start, start + size);
+  const sla = appState.cliente?.sla_dias || 30;
+  const now = Date.now();
+  const tbody = document.getElementById('inv-tbody');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><svg width="32" height="32" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Sin artículos que mostrar</td></tr>';
+  } else {
+    tbody.innerHTML = pageData.map(i => {
+      const dias = Math.floor((now - new Date(i.creado_en).getTime()) / 86400000);
+      const pct = Math.min(100, Math.round(dias / sla * 100));
+      const slaClass = pct >= 100 ? 'sla-over' : pct >= 80 ? 'sla-warn' : 'sla-ok';
+      const slaChip = pct >= 100 ? '<span class="chip chip-red">Vencido</span>' : pct >= 80 ? '<span class="chip chip-yellow">Por vencer</span>' : '<span class="chip chip-green">OK</span>';
+      const estChip = i.estado === 'agotado' ? '<span class="chip chip-grey">Agotado</span>' : '<span class="chip chip-green">Disponible</span>';
+      return '<tr>' +
+        '<td style="font-weight:600;">' + (i.sku||'—') + '</td>' +
+        '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (i.descripcion||'—') + '</td>' +
+        '<td style="font-weight:700;color:#0d2b7a;">' + (i.cantidad||0) + '</td>' +
+        '<td>' + (i.unidad||'PZA') + '</td>' +
+        '<td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:11px;">' + (i.ubicacion||'—') + '</code></td>' +
+        '<td>' + tipoLabel(i.tipo_carga) + '</td>' +
+        '<td style="font-family:monospace;font-size:11px;color:#0d2b7a;">' + (i.folio||'—') + '</td>' +
+        '<td>' + dias + 'd</td>' +
+        '<td><div class="sla-bar"><div class="sla-track"><div class="sla-fill ' + slaClass + '" style="width:' + pct + '%;"></div></div><span style="font-size:9px;color:#64748b;">' + dias + '/' + sla + 'd</span></div></td>' +
+        '<td>' + estChip + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+  // Pagination
+  const totalPages = Math.ceil(data.length / size);
+  const pageBtns = document.getElementById('inv-page-btns');
+  pageBtns.innerHTML = Array.from({length: Math.min(totalPages,8)},(_,idx)=>idx+1).map(p =>
+    '<button class="page-btn' + (p===page?' active':'') + '" onclick="goToInvPage(' + p + ')">' + p + '</button>'
+  ).join('');
+  document.getElementById('inv-pagination').textContent = 'Mostrando ' + Math.min(start+1, data.length) + '–' + Math.min(start+size, data.length) + ' de ' + data.length + ' artículos';
+}
+
+function goToInvPage(p) { appState.invPage = p; renderInventario(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function exportInventarioExcel() {
+  if (appState.isSafran) { toast('Exportación deshabilitada para Safran', 'warning'); return; }
+  const data = appState.inventarioFiltered;
+  if (data.length === 0) { toast('No hay datos para exportar', 'warning'); return; }
+  const headers = ['SKU','Descripción','Cantidad','U/M','Ubicación','Tipo Carga','Folio','Estado','Fecha Entrada'];
+  const rows = [headers.join(','), ...data.map(i => [
+    '"' + (i.sku||'') + '"','"' + (i.descripcion||'') + '"',
+    i.cantidad||0, i.unidad||'PZA',
+    '"' + (i.ubicacion||'') + '"','"' + (i.tipo_carga||'') + '"',
+    '"' + (i.folio||'') + '"',i.estado||'',
+    '"' + (i.creado_en?new Date(i.creado_en).toLocaleDateString('es-MX'):'') + '"'
+  ].join(','))];
+  const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'Inventario_' + (appState.cliente?.nombre||'') + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('Excel exportado correctamente', 'success');
+}
+
+// ═══════════════════════════════════════════════════
+// RECEPCIONES
+// ═══════════════════════════════════════════════════
+async function loadRecepciones() {
+  try {
+    const cid = appState.cliente?.id;
+    const data = await sbFetch('recepciones', { select: '*', 'cliente_id': 'eq.' + cid, order: 'creado_en.desc' });
+    appState.recepciones = data;
+    appState.recepcionesFiltered = data;
+    renderFolioGrid(data);
+    document.getElementById('rec-count-label').textContent = data.length + ' recepción(es) registrada(s)';
+    const withDisc = data.filter(r => r.alerta_sla).length;
+    if (withDisc > 0) {
+      const b = document.getElementById('disc-badge');
+      b.style.display = 'inline'; b.textContent = withDisc;
+    }
+  } catch (e) {
+    console.error('loadRecepciones:', e);
+    document.getElementById('folio-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#ef4444;">Error: ' + e.message + '</div>';
+  }
+}
+
+function filterRecepciones() {
+  const search = document.getElementById('rec-search').value.toLowerCase();
+  const tipo = document.getElementById('rec-filter-tipo').value;
+  appState.recepcionesFiltered = appState.recepciones.filter(r =>
+    (!search || (r.folio||'').toLowerCase().includes(search) || (r.proveedor||'').toLowerCase().includes(search)) &&
+    (!tipo || r.tipo_carga === tipo)
+  );
+  renderFolioGrid(appState.recepcionesFiltered);
+  document.getElementById('rec-count-label').textContent = appState.recepcionesFiltered.length + ' resultado(s)';
+}
+
+function renderFolioGrid(data) {
+  const grid = document.getElementById('folio-grid');
+  if (data.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:#94a3b8;"><svg width="40" height="40" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24" style="display:block;margin:0 auto 10px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>No hay recepciones que mostrar</div>';
+    return;
+  }
+  grid.innerHTML = data.map(r => {
+    const d = new Date(r.creado_en).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+    const hasDisc = r.alerta_sla;
+    return '<div class="folio-card" onclick="openFolioModal('' + r.id + '')">' +
+      (hasDisc ? '<div class="disc-indicator" title="Alerta SLA"></div>' : '') +
+      '<div class="folio-num">' + (r.folio||r.id) + '</div>' +
+      '<div class="folio-meta">' +
+        '<span>📅 ' + d + '</span>' +
+        (r.proveedor ? '<span>🏭 ' + r.proveedor + '</span>' : '') +
+        (r.total_skus ? '<span>📦 ' + r.total_skus + ' SKUs</span>' : '') +
+        (r.ubicacion ? '<span>📍 ' + r.ubicacion + '</span>' : '') +
+      '</div>' +
+      '<div class="folio-tags">' +
+        '<span class="chip chip-blue">' + tipoLabel(r.tipo_carga) + '</span>' +
+        (hasDisc ? '<span class="chip chip-red">Alerta SLA</span>' : '<span class="chip chip-green">OK</span>') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// ALERTAS SLA
+// ═══════════════════════════════════════════════════
+async function loadAlertas() {
+  try {
+    const cid = appState.cliente?.id;
+    const sla = appState.cliente?.sla_dias || 30;
+    const data = await sbFetch('inventario', {
+      select: 'id,folio,sku,descripcion,cantidad,unidad,ubicacion,creado_en',
+      'cliente_id': 'eq.' + cid,
+      'estado': 'eq.disponible',
+      order: 'creado_en.asc'
+    });
+    const now = Date.now();
+    const overdue = data.filter(i => Math.floor((now - new Date(i.creado_en).getTime())/86400000) >= sla);
+    appState.alertas = overdue;
+    const badge = document.getElementById('alert-badge');
+    if (overdue.length > 0) { badge.style.display='inline'; badge.textContent = overdue.length; document.getElementById('sla-card').style.display='block'; document.getElementById('stat-alertas').textContent = overdue.length; }
+    const tbody = document.getElementById('alertas-tbody');
+    if (overdue.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#16a34a;font-weight:600;">✓ Sin alertas activas — Todo dentro de SLA</td></tr>';
+    } else {
+      tbody.innerHTML = overdue.map(i => {
+        const dias = Math.floor((now - new Date(i.creado_en).getTime())/86400000);
+        const exceso = dias - sla;
+        const nivel = exceso > 14 ? '<span class="chip chip-red">Crítico</span>' : '<span class="chip chip-yellow">Moderado</span>';
+        return '<tr>' +
+          '<td style="font-weight:600;">' + (i.sku||'—') + '</td>' +
+          '<td>' + (i.descripcion||'—') + '</td>' +
+          '<td style="font-weight:700;color:#ef4444;">' + dias + ' días</td>' +
+          '<td>' + sla + ' días</td>' +
+          '<td style="color:#ef4444;font-weight:600;">+' + exceso + 'd</td>' +
+          '<td><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:11px;">' + (i.ubicacion||'—') + '</code></td>' +
+          '<td style="font-family:monospace;color:#0d2b7a;">' + (i.folio||'—') + '</td>' +
+          '<td>' + nivel + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('loadAlertas:', e);
+    toast('Error cargando alertas: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL — FOLIO DETAIL
+// ═══════════════════════════════════════════════════
+async function openFolioModal(recepcionId) {
+  const rec = appState.recepciones.find(r => r.id === recepcionId);
+  if (!rec) return;
+  document.getElementById('modal-folio-title').textContent = rec.folio || recepcionId;
+  document.getElementById('modal-folio-date').textContent = new Date(rec.creado_en).toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Meta grid
+  const grid = document.getElementById('modal-detail-grid');
+  const items = [
+    { label: 'Cliente', val: appState.cliente?.nombre || '—' },
+    { label: 'Tipo de Carga', val: tipoLabel(rec.tipo_carga) },
+    { label: 'Proveedor', val: rec.proveedor || 'No especificado' },
+    { label: 'Ubicación', val: rec.ubicacion || '—' },
+    { label: 'Total SKUs', val: rec.total_skus || '—' },
+    { label: 'Total Bultos', val: rec.total_bultos || '—' },
+    { label: 'Status', val: rec.status || 'completado' },
+    { label: 'SLA Días', val: rec.sla_dias ? rec.sla_dias + 'd' : (appState.cliente?.sla_dias || 30) + 'd' }
+  ];
+  grid.innerHTML = items.map(i => '<div class="detail-item"><label>' + i.label + '</label><div class="val">' + i.val + '</div></div>').join('');
+  // Load SKUs from inventario matching this folio
+  try {
+    const skus = await sbFetch('inventario', { select: 'sku,descripcion,cantidad,unidad,ubicacion', 'folio': 'eq.' + rec.folio, limit: 100 });
+    document.getElementById('modal-sku-count').textContent = skus.length;
+    const skuTbody = document.getElementById('modal-sku-tbody');
+    if (skus.length === 0) {
+      skuTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:16px;">No se encontraron artículos vinculados a este folio</td></tr>';
+    } else {
+      skuTbody.innerHTML = skus.map(s =>
+        '<tr><td style="font-weight:600;">' + (s.sku||'—') + '</td><td>' + (s.descripcion||'—') + '</td><td style="font-weight:700;color:#0d2b7a;">' + (s.cantidad||0) + '</td><td>' + (s.unidad||'PZA') + '</td><td><code style="background:#f1f5f9;padding:2px 4px;border-radius:3px;font-size:11px;">' + (s.ubicacion||'—') + '</code></td></tr>'
+      ).join('');
+    }
+  } catch (e) { console.warn('modal sku load:', e); }
+  // Discrepancies (from observaciones or alerta_sla flag)
+  const discSection = document.getElementById('modal-disc-section');
+  const discList = document.getElementById('modal-disc-list');
+  if (rec.alerta_sla) {
+    discSection.style.display = 'block';
+    const dias = Math.floor((Date.now() - new Date(rec.creado_en).getTime())/86400000);
+    discList.innerHTML = '<div class="disc-item">⚠ Alerta SLA: mercancía lleva ' + dias + ' días en almacén (umbral: ' + (rec.sla_dias || appState.cliente?.sla_dias || 30) + 'd)</div>' +
+      (rec.observaciones ? '<div class="disc-item">' + rec.observaciones + '</div>' : '');
+  } else { discSection.style.display = 'none'; }
+  // Photos — check if rec has photo_urls field (array stored during reception)
+  const gallery = document.getElementById('modal-photo-gallery');
+  const photos = rec.foto_urls || rec.fotos || [];
+  if (photos.length > 0) {
+    gallery.innerHTML = photos.map(url =>
+      '<div class="photo-thumb"><img src="' + url + '" alt="Packing slip" onerror="this.parentNode.classList.add('no-photo-fb')"></div>'
+    ).join('');
+  } else {
+    gallery.innerHTML = Array.from({length:4},() =>
+      '<div class="photo-thumb"><div class="no-photo"><svg width="20" height="20" fill="none" stroke="#94a3b8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>Sin foto</div></div>'
+    ).join('');
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ═══════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════
+function tipoLabel(t) {
+  const map = { materia_prima:'Materia Prima', maquinaria:'Maquinaria', consumibles:'Consumibles', devolucion:'Devolución', venta:'Venta', transferencia:'Transferencia' };
+  return map[t] || (t ? t.replace(/_/g,' ') : '—');
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', checkExistingSession);
+</script>
+</body>
+</html>
