@@ -111,8 +111,13 @@ serve(async (req: Request): Promise<Response> => {
       .order("created_at", { ascending: true });
 
     if (recErr) {
-      console.error("[check-sla] Error consultando recepciones:", recErr.message);
-      throw recErr;
+      // Si la tabla recepciones no existe aún, continuar con array vacío
+      if (recErr.code === '42P01' || recErr.message?.includes('does not exist') || recErr.message?.includes('Could not find')) {
+        console.warn("[check-sla] Tabla recepciones no existe aún, omitiendo.");
+      } else {
+        console.error("[check-sla] Error consultando recepciones:", recErr.message);
+        throw recErr;
+      }
     }
 
     // ── 2. También revisar tablas ideascan legacy (Martech / Cooper) ─────
