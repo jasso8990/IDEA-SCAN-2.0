@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEA SCAN 2.0 – Recepción AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Poppins',sans-serif;background:#f1f5f9;color:#1e293b;display:flex;min-height:100vh;}
+/* ── SIDEBAR ── */
+.sidebar{width:240px;background:#0d2b7a;color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:200;transition:transform .3s;}
+.sidebar.collapsed{transform:translateX(-240px);}
+.sidebar-logo{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.15);display:flex;align-items:center;gap:10px;}
+.sidebar-logo img{width:32px;height:32px;}
+.sidebar-logo span{font-weight:700;font-size:15px;letter-spacing:.5px;}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;color:rgba(255,255,255,.75);cursor:pointer;transition:background .2s;text-decoration:none;}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,.12);color:#fff;}
+.nav-item svg{width:18px;height:18px;flex-shrink:0;}
+.nav-section{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);padding:12px 16px 4px;text-transform:uppercase;letter-spacing:1px;}
+/* ── MAIN ── */
+.main-content{margin-left:240px;flex:1;display:flex;flex-direction:column;transition:margin .3s;}
+.main-content.expanded{margin-left:0;}
+/* ── TOP HEADER ── */
+.top-header{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.header-left{display:flex;align-items:center;gap:12px;}
+.menu-toggle{background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:#475569;}
+.menu-toggle:hover{background:#f1f5f9;}
+.page-title{font-size:16px;font-weight:600;color:#0d2b7a;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.badge{background:#0d2b7a;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+/* ── STEPS BAR ── */
+.steps-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;display:flex;align-items:center;gap:0;overflow-x:auto;}
+.step-item{display:flex;align-items:center;gap:8px;padding:14px 20px;font-size:12px;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;}
+.step-item.active{color:#0d2b7a;border-bottom-color:#0d2b7a;}
+.step-item.completed{color:#16a34a;border-bottom-color:#16a34a;}
+.step-item.locked{cursor:not-allowed;opacity:.5;}
+.step-num{width:22px;height:22px;border-radius:50%;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-item.active .step-num{background:#0d2b7a;color:#fff;}
+.step-item.completed .step-num{background:#16a34a;color:#fff;}
+/* ── CONTENT ── */
+.content-area{padding:24px;flex:1;}
+.step-panel{display:none;}
+.step-panel.active{display:block;}
+/* ── CARDS ── */
+.card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:20px;margin-bottom:16px;}
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.card-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.card-icon.blue{background:#dbeafe;}
+.card-icon.green{background:#dcfce7;}
+.card-icon.orange{background:#ffedd5;}
+.card-icon.purple{background:#f3e8ff;}
+.card-title{font-size:15px;font-weight:600;color:#1e293b;}
+.card-subtitle{font-size:12px;color:#64748b;}
+/* ── FORM ── */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.form-row.single{grid-template-columns:1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+label{font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.5px;}
+select,input,textarea{padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;color:#1e293b;background:#fff;transition:border-color .2s;outline:none;}
+select:focus,input:focus,textarea:focus{border-color:#0d2b7a;}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;}
+.btn-primary{background:#0d2b7a;color:#fff;}
+.btn-primary:hover{background:#0a2260;}
+.btn-secondary{background:#f1f5f9;color:#475569;}
+.btn-secondary:hover{background:#e2e8f0;}
+.btn-success{background:#16a34a;color:#fff;}
+.btn-success:hover{background:#15803d;}
+.btn-danger{background:#ef4444;color:#fff;}
+.btn-danger:hover{background:#dc2626;}
+.btn-warning{background:#f59e0b;color:#fff;}
+.btn-sm{padding:6px 12px;font-size:11px;}
+/* ── PHOTO GRID ── */
+.photo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+.photo-slot{aspect-ratio:1;border-radius:8px;border:2px dashed #e2e8f0;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;background:#f8fafc;}
+.photo-slot:hover{border-color:#0d2b7a;background:#eff6ff;}
+.photo-slot.filled{border-style:solid;border-color:#16a34a;}
+.photo-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
+.photo-slot .remove-btn{position:absolute;top:4px;right:4px;background:rgba(239,68,68,.9);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;}
+.photo-slot:hover .remove-btn{opacity:1;}
+.photo-slot .slot-num{font-size:11px;color:#94a3b8;font-weight:600;}
+/* ── SKU TABLE ── */
+.sku-table{width:100%;border-collapse:collapse;font-size:12px;}
+.sku-table th{background:#f8fafc;padding:8px 10px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+.sku-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.sku-table tr:hover td{background:#f8fafc;}
+.sku-table input{padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:4px;font-family:'Poppins',sans-serif;font-size:12px;width:100%;}
+.conf-badge{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;white-space:nowrap;}
+.conf-high{background:#dcfce7;color:#166534;}
+.conf-mid{background:#fef9c3;color:#92400e;}
+.conf-low{background:#fee2e2;color:#991b1b;}
+.row-warn td{background:#fffbeb !important;}
+.row-alert td{background:#fef2f2 !important;}
+/* ── SCAN ITEMS ── */
+.scan-list{display:flex;flex-direction:column;gap:8px;}
+.scan-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;background:#f8fafc;border:1.5px solid #e2e8f0;}
+.scan-item.ok{border-color:#16a34a;background:#f0fdf4;}
+.scan-item.mismatch{border-color:#ef4444;background:#fef2f2;}
+.scan-item.pending{border-color:#f59e0b;background:#fffbeb;}
+.scan-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;}
+/* ── WAREHOUSE GRID ── */
+.warehouse-grid{display:grid;gap:4px;padding:12px;background:#f1f5f9;border-radius:8px;overflow-x:auto;}
+.wh-row{display:flex;gap:4px;align-items:center;}
+.wh-label{font-size:10px;color:#64748b;font-weight:600;width:28px;text-align:right;flex-shrink:0;}
+.wh-cell{width:44px;height:44px;border-radius:6px;border:1.5px solid #e2e8f0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;line-height:1.2;}
+.wh-cell:hover{border-color:#0d2b7a;background:#eff6ff;}
+.wh-cell.suggested{border-color:#16a34a;background:#f0fdf4;color:#166534;}
+.wh-cell.occupied{background:#fee2e2;border-color:#fca5a5;cursor:not-allowed;color:#991b1b;}
+.wh-cell.selected{border-color:#0d2b7a;background:#dbeafe;color:#1e40af;}
+.wh-cell.partial{background:#fef9c3;border-color:#fde047;color:#92400e;}
+/* ── CONFIRM SUMMARY ── */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.summary-item{background:#f8fafc;border-radius:8px;padding:12px 14px;}
+.summary-item label{font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;}
+.summary-item .val{font-size:14px;font-weight:700;color:#1e293b;}
+.folio-display{background:linear-gradient(135deg,#0d2b7a,#1e40af);color:#fff;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;}
+.folio-display .folio-num{font-size:28px;font-weight:700;letter-spacing:2px;}
+.folio-display .folio-label{font-size:12px;opacity:.8;margin-top:4px;}
+/* ── TOAST ── */
+#toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;max-width:320px;animation:slideIn .3s ease;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.toast.success{background:#16a34a;}
+.toast.error{background:#ef4444;}
+.toast.warning{background:#f59e0b;color:#fff;}
+.toast.info{background:#0d2b7a;}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+/* ── LOADING ── */
+#loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.9);z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+#loading-overlay.active{display:flex;}
+.spinner{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#0d2b7a;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading-overlay p{font-size:13px;color:#475569;font-weight:500;}
+/* ── AI THINKING ── */
+.ai-thinking{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1d4ed8;margin-bottom:12px;}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:#3b82f6;animation:pulse .8s ease infinite;}
+.ai-dot:nth-child(2){animation-delay:.15s;}
+.ai-dot:nth-child(3){animation-delay:.3s;}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8);}50%{opacity:1;transform:scale(1.2);}}
+/* ── PROGRESS BAR ── */
+.progress-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:16px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#0d2b7a,#3b82f6);border-radius:3px;transition:width .4s ease;}
+/* ── CHIPS ── */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.chip-blue{background:#dbeafe;color:#1d4ed8;}
+.chip-green{background:#dcfce7;color:#166534;}
+.chip-red{background:#fee2e2;color:#991b1b;}
+.chip-yellow{background:#fef9c3;color:#92400e;}
+/* ── ACTION BAR ── */
+.action-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:#fff;border-top:1px solid #e2e8f0;position:sticky;bottom:0;z-index:50;}
+.action-bar-left,.action-bar-right{display:flex;gap:10px;}
+/* ── LEGEND ── */
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:#475569;}
+.legend-dot{width:12px;height:12px;border-radius:3px;}
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-240px);}
+  .main-content{margin-left:0;}
+  .form-row{grid-template-columns:1fr;}
+  .photo-grid{grid-template-columns:repeat(3,1fr);}
+  .summary-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p id="loading-text">Procesando…</p>
+</div>
+<div id="toast-container"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="8" fill="white" fill-opacity="0.15"/><path d="M8 10h16M8 16h10M8 22h13" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+    <span>IDEA SCAN 2.0</span>
+  </div>
+  <div class="sidebar-nav">
+    <span class="nav-section">Principal</span>
+    <a class="nav-item" href="dashboard.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <span class="nav-section">Recepción</span>
+    <a class="nav-item active" href="ai-recepcion.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Recepción AI
+    </a>
+    <a class="nav-item" href="entradas.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+      Entradas/Salidas
+    </a>
+    <span class="nav-section">Operación</span>
+    <a class="nav-item" href="ai-entry.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      AI Entry
+    </a>
+    <span class="nav-section">Config</span>
+    <a class="nav-item" href="config.html">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Configuración
+    </a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main-content" id="main-content">
+
+  <!-- TOP HEADER -->
+  <header class="top-header">
+    <div class="header-left">
+      <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <span class="page-title">Recepción AI — Módulo Unificado</span>
+    </div>
+    <div class="header-right">
+      <span class="chip chip-blue" id="cliente-chip">Sin cliente</span>
+      <span class="chip chip-green" id="tipo-chip">Sin tipo</span>
+      <span class="badge" id="step-badge">Paso 1/5</span>
+    </div>
+  </header>
+
+  <!-- STEPS BAR -->
+  <div class="steps-bar">
+    <div class="step-item active" id="step-tab-1" onclick="goToStep(1)">
+      <div class="step-num">1</div>
+      <span>Cliente & Carga</span>
+    </div>
+    <div class="step-item locked" id="step-tab-2" onclick="goToStep(2)">
+      <div class="step-num">2</div>
+      <span>Escaneo IA</span>
+    </div>
+    <div class="step-item locked" id="step-tab-3" onclick="goToStep(3)">
+      <div class="step-num">3</div>
+      <span>Validación Física</span>
+    </div>
+    <div class="step-item locked" id="step-tab-4" onclick="goToStep(4)">
+      <div class="step-num">4</div>
+      <span>Asignación Ubicación</span>
+    </div>
+    <div class="step-item locked" id="step-tab-5" onclick="goToStep(5)">
+      <div class="step-num">5</div>
+      <span>Confirmar</span>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-bar" style="margin:0;border-radius:0;">
+    <div class="progress-fill" id="progress-fill" style="width:20%"></div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div class="content-area">
+
+    <!-- ══════════════════════════════════════════════
+         STEP 1 — CLIENTE & TIPO DE CARGA
+    ══════════════════════════════════════════════ -->
+    <div class="step-panel active" id="step-1">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon blue">
+            <svg width="20" height="20" fill="none" stroke="#1d4ed8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Selección de Cliente y Tipo de Carga</div>
+            <div class="card-subtitle">Inicia la recepción seleccionando el cliente activo y el tipo de material</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cliente *</label>
+            <select id="sel-cliente">
+              <option value="">— Cargando clientes… —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de Carga *</label>
+            <select id="sel-tipo">
+              <option value="">— Seleccionar —</option>
+              <option value="materia_prima">Materia Prima</option>
+              <option value="maquinaria">Maquinaria</option>
+              <option value="consumibles">Consumibles</option>
+              <option value="devolucion">Devolución</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Proveedor</label>
+            <input type="text" id="inp-proveedor" placeholder="Nombre del proveedor (opcional)">
+          </div>
+          <div class="form-group">
+            <label>No. de Bultos Esperados</label>
+            <input type="number" id="inp-bultos" placeholder="Ej. 12" min="1">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea id="inp-obs" rows="2" placeholder="Notas adicionales para esta recepción…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:#eff6ff;border-color:#bfdbfe;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="20" height="20" fill="none" stroke="#1d4ed8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#1d4ed8;">Flujo de 5 pasos automatizado</div>
+            <div style="font-size:11px;color:#3b82f6;margin-top:2px;">Cliente → Escaneo IA (Claude Opus) → Validación Física → Ubicación → Folio SAF</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <div class="action-bar-left"></div>
+        <div class="action-bar-right">
+          <button class="btn btn-primary" onclick="confirmarStep1()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            Continuar a Escaneo
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- ══════════════════════════════════════════════
+         STEP 2 — ESCANEO DOCUMENTAL IA (Claude Opus)
+    ══════════════════════════════════════════════ -->
+    <div class="step-panel" id="step-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon purple">
+            <svg width="20" height="20" fill="none" stroke="#7c3aed" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h16a2 2 0 012 2v10a2 2 0 01-2 2h-2"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Escaneo Documental con IA</div>
+            <div class="card-subtitle">Captura hasta 10 fotos de Packing Slips o Facturas. Claude Opus extrae SKUs, cantidades y descripciones automáticamente.</div>
+          </div>
+        </div>
+        <div class="photo-grid" id="photo-grid">
+          <!-- slots injected by JS -->
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-size:12px;color:#64748b;" id="photo-count-label">0 de 10 fotos cargadas</span>
+          <button class="btn btn-secondary btn-sm" onclick="clearAllPhotos()">Limpiar todo</button>
+        </div>
+        <button class="btn btn-primary" id="btn-analyze" onclick="runAiAnalysis()" style="width:100%;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          Analizar con Claude Opus
+        </button>
+      </div>
+
+      <!-- AI Results Table -->
+      <div class="card" id="card-sku-table" style="display:none;">
+        <div class="card-header">
+          <div class="card-icon green">
+            <svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Resultados IA — Tabla Editable</div>
+            <div class="card-subtitle" id="sku-table-subtitle">Revisa y corrige los campos extraídos antes de continuar</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#dcfce7;border:1px solid #86efac;"></div><span>≥80% Confianza</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fef9c3;border:1px solid #fde047;"></div><span>60–79% Revisar</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fee2e2;border:1px solid #fca5a5;"></div><span>&lt;60% Verificar</span></div>
+        </div>
+        <div id="ai-thinking" class="ai-thinking" style="display:none;">
+          <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+          <span id="ai-thinking-text">Claude Opus analizando documentos…</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="sku-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>SKU / Código</th>
+                <th>Descripción</th>
+                <th>Cantidad</th>
+                <th>U/M</th>
+                <th>Conf. SKU</th>
+                <th>Conf. Qty</th>
+                <th>Conf. Desc</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="sku-tbody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+          <button class="btn btn-secondary btn-sm" onclick="addSkuRow()">+ Agregar fila manual</button>
+          <span id="sku-summary" style="font-size:12px;color:#64748b;"></span>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <div class="action-bar-left">
+          <button class="btn btn-secondary" onclick="goToStep(1)">← Atrás</button>
+        </div>
+        <div class="action-bar-right">
+          <button class="btn btn-primary" onclick="confirmarStep2()">
+            Continuar a Validación Física
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         STEP 3 — VALIDACIÓN FÍSICA (Claude Sonnet)
+    ══════════════════════════════════════════════ -->
+    <div class="step-panel" id="step-3">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon orange">
+            <svg width="20" height="20" fill="none" stroke="#f97316" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Validación Física de Bultos</div>
+            <div class="card-subtitle">Escanea etiquetas físicas con Claude Sonnet. La IA compara en tiempo real contra los documentos del Paso 2.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#0d2b7a;" id="bultos-esperados">—</div>
+            <div style="font-size:11px;color:#64748b;">Bultos Esperados</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#16a34a;" id="bultos-ok">0</div>
+            <div style="font-size:11px;color:#64748b;">Verificados OK</div>
+          </div>
+          <div style="background:#fef2f2;border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#ef4444;" id="bultos-disc">0</div>
+            <div style="font-size:11px;color:#64748b;">Con Discrepancias</div>
+          </div>
+          <div style="background:#fffbeb;border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#f59e0b;" id="bultos-pending">0</div>
+            <div style="font-size:11px;color:#64748b;">Pendientes</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <input type="text" id="inp-label-scan" placeholder="Escanear código de etiqueta o ingresar manualmente…" style="flex:1;">
+          <button class="btn btn-primary" onclick="scanLabel()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline stroke-linecap="round" stroke-linejoin="round" stroke-width="2" points="9,22 9,12 15,12 15,22"/></svg>
+            Validar
+          </button>
+          <button class="btn btn-secondary" onclick="capturePhysicalPhoto()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+            Foto
+          </button>
+        </div>
+        <div id="ai-thinking-v3" class="ai-thinking" style="display:none;">
+          <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+          <span>Claude Sonnet verificando etiqueta…</span>
+        </div>
+        <div class="scan-list" id="scan-list"></div>
+        <div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;" id="scan-empty">
+          <svg width="32" height="32" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24" style="margin:0 auto 8px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6.364 2.636l-.707.707M20 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          Escanea la primera etiqueta para comenzar la verificación física
+        </div>
+        <input type="file" id="physical-photo-input" accept="image/*" capture="environment" style="display:none;" onchange="handlePhysicalPhoto(event)">
+      </div>
+      <div class="action-bar">
+        <div class="action-bar-left">
+          <button class="btn btn-secondary" onclick="goToStep(2)">← Atrás</button>
+        </div>
+        <div class="action-bar-right">
+          <button class="btn btn-warning" onclick="confirmarStep3WithWarning()" id="btn-step3-continue" style="display:none;">
+            Continuar con discrepancias
+          </button>
+          <button class="btn btn-primary" onclick="confirmarStep3()">
+            Continuar a Ubicación
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- ══════════════════════════════════════════════
+         STEP 4 — ASIGNACIÓN DE UBICACIÓN
+    ══════════════════════════════════════════════ -->
+    <div class="step-panel" id="step-4">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon blue">
+            <svg width="20" height="20" fill="none" stroke="#1d4ed8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Asignación Inteligente de Ubicación</div>
+            <div class="card-subtitle">La IA sugiere la ubicación óptima basada en dimensiones, tipo de carga y reglas del cliente</div>
+          </div>
+        </div>
+
+        <!-- AI Suggestion Panel -->
+        <div id="location-ai-panel" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px;margin-bottom:16px;display:none;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:#166534;margin-bottom:4px;">Sugerencia IA</div>
+              <div style="font-size:12px;color:#166534;" id="ai-location-text">—</div>
+              <button class="btn btn-success btn-sm" style="margin-top:8px;" onclick="acceptAiLocation()">Aceptar sugerencia</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dimensions input for AI -->
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label>Tipo de Embalaje</label>
+            <select id="sel-embalaje" onchange="getAiLocationSuggestion()">
+              <option value="">— Seleccionar —</option>
+              <option value="pallet">Pallet / Tarima</option>
+              <option value="caja">Caja</option>
+              <option value="saco">Saco / Bulto</option>
+              <option value="pieza">Pieza suelta</option>
+              <option value="rollo">Rollo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Peso aprox. (kg)</label>
+            <input type="number" id="inp-peso" placeholder="Ej. 500" onchange="getAiLocationSuggestion()">
+          </div>
+        </div>
+
+        <!-- Warehouse Grid Legend -->
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#f0fdf4;border:1.5px solid #86efac;"></div><span>Sugerido IA</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#dbeafe;border:1.5px solid #93c5fd;"></div><span>Seleccionado</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fef9c3;border:1.5px solid #fde047;"></div><span>Parcialmente ocupado</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fee2e2;border:1.5px solid #fca5a5;"></div><span>Ocupado</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fff;border:1.5px solid #e2e8f0;"></div><span>Disponible</span></div>
+        </div>
+
+        <!-- Warehouse Grid Container -->
+        <div id="warehouse-grid-container">
+          <div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;">
+            <div class="spinner" style="margin:0 auto 8px;"></div>
+            Cargando mapa del almacén…
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;">
+            <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;display:block;">Ubicación Seleccionada</label>
+            <input type="text" id="inp-ubicacion" placeholder="Ej. A-01-02-01" style="font-weight:600;font-size:14px;">
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:18px;" onclick="refreshWarehouseGrid()">↻ Actualizar</button>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <div class="action-bar-left">
+          <button class="btn btn-secondary" onclick="goToStep(3)">← Atrás</button>
+        </div>
+        <div class="action-bar-right">
+          <button class="btn btn-primary" onclick="confirmarStep4()">
+            Continuar a Confirmación
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         STEP 5 — CONFIRMAR Y GENERAR FOLIO
+    ══════════════════════════════════════════════ -->
+    <div class="step-panel" id="step-5">
+      <div id="folio-pending-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon green">
+              <svg width="20" height="20" fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div>
+              <div class="card-title">Confirmación Final — Resumen de Recepción</div>
+              <div class="card-subtitle">Revisa toda la información antes de generar el Folio oficial y registrar en inventario</div>
+            </div>
+          </div>
+          <div class="summary-grid" id="summary-grid">
+            <!-- Filled by JS -->
+          </div>
+          <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:8px;">Artículos a registrar (<span id="summary-sku-count">0</span> SKUs)</div>
+            <div id="summary-sku-list" style="display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;"></div>
+          </div>
+          <div style="background:#fffbeb;border:1.5px solid #fde047;border-radius:8px;padding:12px;margin-bottom:12px;" id="summary-discrepancy-panel" style="display:none;">
+            <div style="font-size:12px;font-weight:600;color:#92400e;margin-bottom:4px;">⚠ Discrepancias registradas</div>
+            <div id="summary-disc-list" style="font-size:11px;color:#92400e;"></div>
+          </div>
+          <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:12px;" id="excel-info-panel">
+            <div style="font-size:12px;font-weight:600;color:#1d4ed8;margin-bottom:4px;" id="excel-status-msg">📊 Exportación Excel</div>
+            <div style="font-size:11px;color:#3b82f6;" id="excel-status-detail">Se generará automáticamente al confirmar</div>
+          </div>
+        </div>
+        <div class="action-bar">
+          <div class="action-bar-left">
+            <button class="btn btn-secondary" onclick="goToStep(4)">← Atrás</button>
+          </div>
+          <div class="action-bar-right">
+            <button class="btn btn-success" onclick="completarRecepcion()" id="btn-complete">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Generar Folio y Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div id="folio-success-panel" style="display:none;">
+        <div class="card" style="text-align:center;">
+          <div style="margin-bottom:16px;">
+            <div style="width:60px;height:60px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+              <svg width="28" height="28" fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div style="font-size:18px;font-weight:700;color:#166534;margin-bottom:4px;">¡Recepción Completada!</div>
+            <div style="font-size:13px;color:#64748b;">Los artículos han sido registrados en inventario</div>
+          </div>
+          <div class="folio-display">
+            <div class="folio-label">Número de Folio Oficial</div>
+            <div class="folio-num" id="folio-display-num">—</div>
+            <div class="folio-label" id="folio-display-date" style="margin-top:4px;"></div>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+            <button class="btn btn-primary" onclick="window.print()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              Imprimir
+            </button>
+            <button class="btn btn-secondary" id="btn-excel-download" onclick="triggerExcelDownload()" style="display:none;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Descargar Excel
+            </button>
+            <button class="btn btn-secondary" onclick="resetModule()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Nueva Recepción
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end content-area -->
+</div><!-- end main-content -->
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS & CONFIGURATION
+// ═══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://usqugtxeynkozlobeojt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzcXVndHhleW5rb3psb2Jlb2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwMjA3ODgsImV4cCI6MjA1ODU5Njc4OH0.1mrnLfb_DU1LkLtKUPo2xRkpF_OzfmVTkM-jtR1mroc';
+const FN_BASE = SUPABASE_URL + '/functions/v1';
+
+// ═══════════════════════════════════════════════════════════
+// APPLICATION STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+  currentStep: 1,
+  completedSteps: [],
+  cliente: null,
+  tipoCarga: null,
+  proveedor: '',
+  bultosEsperados: 0,
+  observaciones: '',
+  photos: [],          // base64 strings
+  skuData: [],         // {sku, descripcion, cantidad, um, confSku, confQty, confDesc}
+  scanResults: [],     // {label, status, sku, qty, expected}
+  ubicacion: '',
+  embalaje: '',
+  peso: 0,
+  folio: null,
+  excelBlob: null,
+  excelFilename: ''
+};
+
+// ═══════════════════════════════════════════════════════════
+// SUPABASE REST HELPER
+// ═══════════════════════════════════════════════════════════
+async function sbGet(table, params = {}) {
+  let url = SUPABASE_URL + '/rest/v1/' + table + '?';
+  const qp = new URLSearchParams(params);
+  url += qp.toString();
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Accept-Profile': 'ideascan'
+    }
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function sbPost(table, body) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      'Content-Profile': 'ideascan',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function callEdge(fn, body = {}) {
+  const res = await fetch(FN_BASE + '/' + fn, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error('Edge function error ' + res.status + ': ' + errText);
+  }
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════
+function toast(msg, type = 'info', duration = 4000) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  const icons = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+  };
+  el.innerHTML = '<span>' + (icons[type] || 'ℹ') + '</span><span>' + msg + '</span>';
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(100%)';
+    el.style.transition = 'all .3s';
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOADING OVERLAY
+// ═══════════════════════════════════════════════════════════
+function showLoading(text = 'Procesando…') {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIDEBAR TOGGLE
+// ═══════════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const main = document.getElementById('main-content');
+  sidebar.classList.toggle('collapsed');
+  main.classList.toggle('expanded');
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function goToStep(n) {
+  if (n === state.currentStep) return;
+  if (n > state.currentStep && !state.completedSteps.includes(n - 1)) {
+    toast('Completa el paso ' + (n - 1) + ' primero', 'warning');
+    return;
+  }
+  if (n > 1 && n > state.currentStep + 1 && !state.completedSteps.includes(n - 1)) return;
+
+  document.getElementById('step-' + state.currentStep).classList.remove('active');
+  document.getElementById('step-tab-' + state.currentStep).classList.remove('active');
+
+  state.currentStep = n;
+
+  document.getElementById('step-' + n).classList.add('active');
+  const tab = document.getElementById('step-tab-' + n);
+  tab.classList.remove('locked');
+  tab.classList.add('active');
+
+  document.getElementById('step-badge').textContent = 'Paso ' + n + '/5';
+  document.getElementById('progress-fill').style.width = (n * 20) + '%';
+
+  if (n === 4) renderWarehouseGrid();
+  if (n === 5) renderSummary();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function markStepComplete(n) {
+  if (!state.completedSteps.includes(n)) state.completedSteps.push(n);
+  const tab = document.getElementById('step-tab-' + n);
+  tab.classList.remove('active', 'locked');
+  tab.classList.add('completed');
+  const nextTab = document.getElementById('step-tab-' + (n + 1));
+  if (nextTab) nextTab.classList.remove('locked');
+}
+// ═══════════════════════════════════════════════════════════
+// STEP 1 — LOAD CLIENTS & CONFIRM
+// ═══════════════════════════════════════════════════════════
+async function loadClientes() {
+  try {
+    const data = await sbGet('clientes', { select: 'id,nombre,codigo', order: 'nombre.asc' });
+    const sel = document.getElementById('sel-cliente');
+    sel.innerHTML = '<option value="">— Seleccionar cliente —</option>';
+    data.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.dataset.codigo = c.codigo || '';
+      opt.dataset.nombre = c.nombre;
+      opt.textContent = (c.codigo ? '[' + c.codigo + '] ' : '') + c.nombre;
+      sel.appendChild(opt);
+    });
+    toast('Clientes cargados (' + data.length + ')', 'success', 2000);
+  } catch (e) {
+    console.error('loadClientes:', e);
+    toast('Error cargando clientes: ' + e.message, 'error');
+  }
+}
+
+function confirmarStep1() {
+  const sel = document.getElementById('sel-cliente');
+  const tipo = document.getElementById('sel-tipo').value;
+  if (!sel.value || !tipo) {
+    toast('Selecciona cliente y tipo de carga', 'warning');
+    return;
+  }
+  const opt = sel.options[sel.selectedIndex];
+  state.cliente = {
+    id: sel.value,
+    nombre: opt.dataset.nombre,
+    codigo: opt.dataset.codigo
+  };
+  state.tipoCarga = tipo;
+  state.proveedor = document.getElementById('inp-proveedor').value;
+  state.bultosEsperados = parseInt(document.getElementById('inp-bultos').value) || 0;
+  state.observaciones = document.getElementById('inp-obs').value;
+
+  document.getElementById('cliente-chip').textContent = state.cliente.nombre;
+  document.getElementById('tipo-chip').textContent = tipo.replace('_', ' ');
+
+  markStepComplete(1);
+  initPhotoGrid();
+  goToStep(2);
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 2 — PHOTO GRID & AI ANALYSIS
+// ═══════════════════════════════════════════════════════════
+function initPhotoGrid() {
+  const grid = document.getElementById('photo-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'photo-slot';
+    slot.id = 'photo-slot-' + i;
+    slot.onclick = () => triggerPhotoCapture(i);
+    slot.innerHTML = '<svg width="24" height="24" fill="none" stroke="#94a3b8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg><span class="slot-num">' + (i + 1) + '</span>';
+    grid.appendChild(slot);
+  }
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.id = 'photo-file-input';
+  inp.accept = 'image/*';
+  inp.style.display = 'none';
+  inp.multiple = true;
+  inp.onchange = handlePhotoFiles;
+  grid.parentNode.appendChild(inp);
+}
+
+let _currentSlotIndex = 0;
+function triggerPhotoCapture(slotIndex) {
+  _currentSlotIndex = slotIndex;
+  document.getElementById('photo-file-input').click();
+}
+
+function handlePhotoFiles(e) {
+  const files = Array.from(e.target.files);
+  files.forEach((file, fi) => {
+    const idx = _currentSlotIndex + fi;
+    if (idx >= 10) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      state.photos[idx] = ev.target.result;
+      renderPhotoSlot(idx, ev.target.result);
+      updatePhotoCountLabel();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function renderPhotoSlot(idx, dataUrl) {
+  const slot = document.getElementById('photo-slot-' + idx);
+  if (!slot) return;
+  slot.classList.add('filled');
+  slot.innerHTML = '<img src="' + dataUrl + '" alt="Foto ' + (idx + 1) + '">' +
+    '<button class="remove-btn" onclick="event.stopPropagation();removePhoto(' + idx + ')">✕</button>';
+}
+
+function removePhoto(idx) {
+  state.photos[idx] = null;
+  const slot = document.getElementById('photo-slot-' + idx);
+  slot.classList.remove('filled');
+  slot.innerHTML = '<svg width="24" height="24" fill="none" stroke="#94a3b8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg><span class="slot-num">' + (idx + 1) + '</span>';
+  slot.onclick = () => triggerPhotoCapture(idx);
+  updatePhotoCountLabel();
+}
+
+function clearAllPhotos() {
+  state.photos = [];
+  for (let i = 0; i < 10; i++) removePhoto(i);
+}
+
+function updatePhotoCountLabel() {
+  const count = state.photos.filter(Boolean).length;
+  document.getElementById('photo-count-label').textContent = count + ' de 10 fotos cargadas';
+}
+
+async function runAiAnalysis() {
+  const photos = state.photos.filter(Boolean);
+  if (photos.length === 0) {
+    toast('Agrega al menos una foto de documento', 'warning');
+    return;
+  }
+  const aiThinking = document.getElementById('ai-thinking');
+  const aiText = document.getElementById('ai-thinking-text');
+  document.getElementById('card-sku-table').style.display = 'block';
+  aiThinking.style.display = 'flex';
+  aiText.textContent = 'Claude Opus analizando ' + photos.length + ' documento(s)…';
+  document.getElementById('btn-analyze').disabled = true;
+
+  try {
+    const result = await callEdge('ai-analyze', {
+      images: photos.map(p => p.split(',')[1]),
+      tipo_carga: state.tipoCarga,
+      cliente: state.cliente.nombre,
+      mode: 'document_extraction'
+    });
+
+    aiThinking.style.display = 'none';
+    const items = result.items || result.skus || [];
+    state.skuData = items;
+    renderSkuTable(items);
+    const lowConf = items.filter(i => (i.confSku || i.confidence || 100) < 80).length;
+    document.getElementById('sku-table-subtitle').textContent =
+      items.length + ' ítems extraídos' + (lowConf > 0 ? ' · ⚠ ' + lowConf + ' requieren revisión' : ' · ✓ Todos con alta confianza');
+    document.getElementById('sku-summary').textContent = items.length + ' SKUs · ' + photos.length + ' docs analizados';
+    toast('Análisis completado: ' + items.length + ' artículos encontrados', 'success');
+  } catch (e) {
+    aiThinking.style.display = 'none';
+    console.error('runAiAnalysis:', e);
+    toast('Error en análisis IA: ' + e.message, 'error');
+    // Fallback: show manual entry row
+    state.skuData = [];
+    renderSkuTable([]);
+    addSkuRow();
+  }
+  document.getElementById('btn-analyze').disabled = false;
+}
+
+function confidenceBadge(val) {
+  const pct = Math.round(val || 0);
+  if (pct >= 80) return '<span class="conf-badge conf-high">' + pct + '%</span>';
+  if (pct >= 60) return '<span class="conf-badge conf-mid">' + pct + '%</span>';
+  return '<span class="conf-badge conf-low">' + pct + '%</span>';
+}
+
+function renderSkuTable(items) {
+  const tbody = document.getElementById('sku-tbody');
+  tbody.innerHTML = '';
+  items.forEach((item, i) => {
+    const confSku = item.confSku || item.confidence || 95;
+    const confQty = item.confQty || item.confidence || 95;
+    const confDesc = item.confDesc || item.confidence || 95;
+    const rowClass = (confSku < 60 || confQty < 60) ? 'row-alert' : (confSku < 80 || confQty < 80) ? 'row-warn' : '';
+    const tr = document.createElement('tr');
+    tr.className = rowClass;
+    tr.id = 'sku-row-' + i;
+    tr.innerHTML =
+      '<td>' + (i + 1) + '</td>' +
+      '<td><input value="' + (item.sku || '') + '" onchange="updateSkuData(' + i + ','sku',this.value)" style="min-width:90px;"></td>' +
+      '<td><input value="' + (item.descripcion || item.description || '') + '" onchange="updateSkuData(' + i + ','descripcion',this.value)" style="min-width:160px;"></td>' +
+      '<td><input type="number" value="' + (item.cantidad || item.quantity || '') + '" onchange="updateSkuData(' + i + ','cantidad',this.value)" style="width:70px;"></td>' +
+      '<td><input value="' + (item.um || item.unit || 'PZA') + '" onchange="updateSkuData(' + i + ','um',this.value)" style="width:55px;"></td>' +
+      '<td>' + confidenceBadge(confSku) + '</td>' +
+      '<td>' + confidenceBadge(confQty) + '</td>' +
+      '<td>' + confidenceBadge(confDesc) + '</td>' +
+      '<td><button class="btn btn-danger btn-sm" onclick="removeSkuRow(' + i + ')">✕</button></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function updateSkuData(idx, field, val) {
+  if (!state.skuData[idx]) state.skuData[idx] = {};
+  state.skuData[idx][field] = val;
+}
+
+function addSkuRow() {
+  const newItem = { sku: '', descripcion: '', cantidad: '', um: 'PZA', confSku: 70, confQty: 70, confDesc: 70 };
+  state.skuData.push(newItem);
+  renderSkuTable(state.skuData);
+  document.getElementById('card-sku-table').style.display = 'block';
+}
+
+function removeSkuRow(idx) {
+  state.skuData.splice(idx, 1);
+  renderSkuTable(state.skuData);
+}
+
+function confirmarStep2() {
+  const validItems = state.skuData.filter(i => i.sku || i.descripcion);
+  if (validItems.length === 0) {
+    toast('Agrega al menos un artículo antes de continuar', 'warning');
+    return;
+  }
+  state.skuData = validItems;
+  document.getElementById('bultos-esperados').textContent = state.bultosEsperados || validItems.length;
+  document.getElementById('bultos-pending').textContent = state.bultosEsperados || validItems.length;
+  initScanList();
+  markStepComplete(2);
+  goToStep(3);
+}
+// ═══════════════════════════════════════════════════════════
+// STEP 3 — PHYSICAL SCAN VALIDATION (Claude Sonnet)
+// ═══════════════════════════════════════════════════════════
+function initScanList() {
+  state.scanResults = [];
+  document.getElementById('scan-list').innerHTML = '';
+  document.getElementById('scan-empty').style.display = 'block';
+  document.getElementById('btn-step3-continue').style.display = 'none';
+}
+
+async function scanLabel() {
+  const inp = document.getElementById('inp-label-scan');
+  const val = inp.value.trim();
+  if (!val) { toast('Ingresa o escanea un código de etiqueta', 'warning'); return; }
+  inp.value = '';
+  await processLabelScan(val, null);
+}
+
+function capturePhysicalPhoto() {
+  document.getElementById('physical-photo-input').click();
+}
+
+async function handlePhysicalPhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    await processLabelScan(null, ev.target.result.split(',')[1]);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+async function processLabelScan(labelCode, imageBase64) {
+  const thinking = document.getElementById('ai-thinking-v3');
+  thinking.style.display = 'flex';
+  document.getElementById('scan-empty').style.display = 'none';
+
+  try {
+    let result;
+    if (imageBase64) {
+      result = await callEdge('ai-analyze', {
+        images: [imageBase64],
+        mode: 'label_verification',
+        expected_items: state.skuData,
+        cliente: state.cliente.nombre
+      });
+    } else {
+      // Text-based label matching against skuData
+      const matched = state.skuData.find(s =>
+        s.sku && s.sku.toLowerCase().includes(labelCode.toLowerCase()) ||
+        labelCode.toLowerCase().includes((s.sku || '').toLowerCase())
+      );
+      result = {
+        label: labelCode,
+        sku: matched ? matched.sku : labelCode,
+        descripcion: matched ? matched.descripcion : 'Sin coincidencia',
+        cantidad: matched ? matched.cantidad : 0,
+        status: matched ? 'ok' : 'mismatch',
+        discrepancy: matched ? null : 'SKU no encontrado en documentos'
+      };
+    }
+
+    thinking.style.display = 'none';
+
+    const scanItem = {
+      label: labelCode || ('IMG-' + (state.scanResults.length + 1)),
+      sku: result.sku || result.label || labelCode,
+      descripcion: result.descripcion || result.description || '',
+      cantidad: result.cantidad || result.quantity || 0,
+      status: result.status || (result.mismatch ? 'mismatch' : 'ok'),
+      discrepancy: result.discrepancy || null
+    };
+
+    state.scanResults.push(scanItem);
+    renderScanItem(scanItem, state.scanResults.length - 1);
+    updateScanCounters();
+
+  } catch (e) {
+    thinking.style.display = 'none';
+    console.error('processLabelScan:', e);
+    toast('Error verificando etiqueta: ' + e.message, 'error');
+  }
+}
+
+function renderScanItem(item, idx) {
+  const list = document.getElementById('scan-list');
+  const div = document.createElement('div');
+  div.className = 'scan-item ' + (item.status === 'ok' ? 'ok' : item.status === 'mismatch' ? 'mismatch' : 'pending');
+  div.innerHTML =
+    '<div style="flex:1;">' +
+      '<div style="font-size:12px;font-weight:600;color:#1e293b;">' + (item.sku || item.label) + '</div>' +
+      '<div style="font-size:11px;color:#64748b;">' + (item.descripcion || '') + (item.cantidad ? ' · Qty: ' + item.cantidad : '') + '</div>' +
+      (item.discrepancy ? '<div style="font-size:11px;color:#ef4444;margin-top:2px;">⚠ ' + item.discrepancy + '</div>' : '') +
+    '</div>' +
+    '<div class="scan-status">' +
+      (item.status === 'ok'
+        ? '<svg width="16" height="16" fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg><span style="color:#16a34a;">OK</span>'
+        : item.status === 'mismatch'
+        ? '<svg width="16" height="16" fill="none" stroke="#ef4444" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg><span style="color:#ef4444;">Discrepancia</span>'
+        : '<svg width="16" height="16" fill="none" stroke="#f59e0b" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><span style="color:#f59e0b;">Pendiente</span>') +
+    '</div>';
+  list.appendChild(div);
+}
+
+function updateScanCounters() {
+  const ok = state.scanResults.filter(r => r.status === 'ok').length;
+  const disc = state.scanResults.filter(r => r.status === 'mismatch').length;
+  const pending = Math.max(0, (state.bultosEsperados || state.skuData.length) - state.scanResults.length);
+  document.getElementById('bultos-ok').textContent = ok;
+  document.getElementById('bultos-disc').textContent = disc;
+  document.getElementById('bultos-pending').textContent = pending;
+  if (disc > 0) document.getElementById('btn-step3-continue').style.display = 'inline-flex';
+}
+
+function confirmarStep3() {
+  markStepComplete(3);
+  goToStep(4);
+}
+
+function confirmarStep3WithWarning() {
+  const disc = state.scanResults.filter(r => r.status === 'mismatch').length;
+  if (disc > 0 && !confirm('Hay ' + disc + ' discrepancia(s) registrada(s). ¿Deseas continuar de todas formas?')) return;
+  confirmarStep3();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STEP 4 — WAREHOUSE GRID MAP
+// ═══════════════════════════════════════════════════════════
+const ROWS = ['A','B','C','D','E'];
+const BAYS = [1,2,3,4,5,6,7,8,9,10];
+const LEVELS = [1,2,3,4];
+
+let warehouseData = {}; // key: "A-01-02-01" => {status}
+let selectedLocation = '';
+let suggestedLocation = '';
+
+async function renderWarehouseGrid() {
+  const container = document.getElementById('warehouse-grid-container');
+  container.innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner" style="margin:0 auto 8px;"></div><span style="font-size:12px;color:#64748b;">Cargando ubicaciones…</span></div>';
+  try {
+    const data = await sbGet('ubicaciones', { select: 'codigo,estado,capacidad_actual,capacidad_maxima', order: 'codigo.asc' });
+    warehouseData = {};
+    data.forEach(u => {
+      warehouseData[u.codigo] = {
+        status: u.estado || (u.capacidad_actual >= u.capacidad_maxima ? 'occupied' : u.capacidad_actual > 0 ? 'partial' : 'available'),
+        cap: u.capacidad_actual,
+        max: u.capacidad_maxima
+      };
+    });
+  } catch (e) {
+    console.warn('ubicaciones load failed, using demo data:', e.message);
+    // Demo data
+    ROWS.forEach(r => BAYS.forEach(b => LEVELS.forEach(l => {
+      const key = r + '-' + String(b).padStart(2,'0') + '-' + String(l).padStart(2,'0');
+      warehouseData[key] = { status: Math.random() > 0.7 ? 'occupied' : Math.random() > 0.5 ? 'partial' : 'available' };
+    })));
+  }
+  buildGridHTML(container);
+  await getAiLocationSuggestion();
+}
+
+function buildGridHTML(container) {
+  container.innerHTML = '';
+  const scroll = document.createElement('div');
+  scroll.style.overflowX = 'auto';
+
+  ROWS.forEach(row => {
+    const rowLabel = document.createElement('div');
+    rowLabel.style.cssText = 'font-size:11px;font-weight:700;color:#475569;padding:4px 0 2px;';
+    rowLabel.textContent = 'Pasillo ' + row;
+    scroll.appendChild(rowLabel);
+
+    LEVELS.forEach(lvl => {
+      const wRow = document.createElement('div');
+      wRow.className = 'wh-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'wh-label';
+      lbl.textContent = 'N' + String(lvl).padStart(2,'0');
+      wRow.appendChild(lbl);
+
+      BAYS.forEach(bay => {
+        const key = row + '-' + String(bay).padStart(2,'0') + '-' + String(lvl).padStart(2,'0');
+        const cell = document.createElement('div');
+        cell.className = 'wh-cell';
+        cell.id = 'cell-' + key;
+        cell.textContent = key;
+        const info = warehouseData[key] || { status: 'available' };
+        if (info.status === 'occupied') cell.classList.add('occupied');
+        else if (info.status === 'partial') cell.classList.add('partial');
+        if (key === suggestedLocation) cell.classList.add('suggested');
+        if (key === selectedLocation) cell.classList.add('selected');
+        cell.onclick = () => selectLocation(key);
+        wRow.appendChild(cell);
+      });
+      scroll.appendChild(wRow);
+    });
+  });
+  container.appendChild(scroll);
+}
+
+function selectLocation(key) {
+  const info = warehouseData[key] || {};
+  if (info.status === 'occupied') { toast('Ubicación ocupada, selecciona otra', 'warning'); return; }
+  if (selectedLocation) {
+    const prev = document.getElementById('cell-' + selectedLocation);
+    if (prev) { prev.classList.remove('selected'); if (selectedLocation === suggestedLocation) prev.classList.add('suggested'); }
+  }
+  selectedLocation = key;
+  state.ubicacion = key;
+  document.getElementById('inp-ubicacion').value = key;
+  const cell = document.getElementById('cell-' + key);
+  if (cell) { cell.classList.add('selected'); cell.classList.remove('suggested'); }
+}
+
+async function getAiLocationSuggestion() {
+  const embalaje = document.getElementById('sel-embalaje')?.value;
+  if (!embalaje && !state.tipoCarga) return;
+
+  const isPallet = embalaje === 'pallet' || state.tipoCarga === 'maquinaria';
+  const nivel = isPallet ? '01' : '02';
+
+  // Find first available in nivel
+  let found = null;
+  for (const row of ROWS) {
+    for (const bay of BAYS) {
+      const key = row + '-' + String(bay).padStart(2,'0') + '-' + nivel;
+      const info = warehouseData[key];
+      if (!info || info.status === 'available') { found = key; break; }
+    }
+    if (found) break;
+  }
+
+  if (!found) found = 'A-01-01';
+  suggestedLocation = found;
+
+  const panel = document.getElementById('location-ai-panel');
+  panel.style.display = 'block';
+  const rule = isPallet ? 'Pallets → Nivel 01 (acceso directo)' : 'Cajas/consumibles → Nivel 02+';
+  document.getElementById('ai-location-text').textContent =
+    'Ubicación óptima: ' + found + '  ·  Regla: ' + rule + '  ·  ' +
+    (state.cliente ? 'Cliente ' + state.cliente.codigo : '') +
+    '  ·  Espacio disponible confirmado';
+
+  // Highlight in grid
+  const cell = document.getElementById('cell-' + found);
+  if (cell && found !== selectedLocation) {
+    cell.classList.add('suggested');
+  }
+}
+
+function acceptAiLocation() {
+  if (!suggestedLocation) return;
+  selectLocation(suggestedLocation);
+  toast('Ubicación ' + suggestedLocation + ' seleccionada', 'success');
+}
+
+function refreshWarehouseGrid() {
+  renderWarehouseGrid();
+}
+
+function confirmarStep4() {
+  const ub = document.getElementById('inp-ubicacion').value.trim() || state.ubicacion;
+  if (!ub) { toast('Selecciona una ubicación en el mapa', 'warning'); return; }
+  state.ubicacion = ub;
+  state.embalaje = document.getElementById('sel-embalaje')?.value || '';
+  state.peso = parseFloat(document.getElementById('inp-peso')?.value) || 0;
+  markStepComplete(4);
+  goToStep(5);
+}
+// ═══════════════════════════════════════════════════════════
+// STEP 5 — SUMMARY & FINAL COMMIT
+// ═══════════════════════════════════════════════════════════
+function renderSummary() {
+  const TIPO_LABELS = {
+    materia_prima: 'Materia Prima',
+    maquinaria: 'Maquinaria',
+    consumibles: 'Consumibles',
+    devolucion: 'Devolución'
+  };
+
+  const grid = document.getElementById('summary-grid');
+  const items = [
+    { label: 'Cliente', val: state.cliente ? state.cliente.nombre : '—' },
+    { label: 'Tipo de Carga', val: TIPO_LABELS[state.tipoCarga] || state.tipoCarga || '—' },
+    { label: 'Proveedor', val: state.proveedor || 'No especificado' },
+    { label: 'Ubicación Asignada', val: state.ubicacion || '—' },
+    { label: 'SKUs Documentados', val: state.skuData.length + ' artículos' },
+    { label: 'Bultos Verificados', val: state.scanResults.filter(r => r.status === 'ok').length + ' / ' + state.scanResults.length }
+  ];
+  grid.innerHTML = items.map(i =>
+    '<div class="summary-item"><label>' + i.label + '</label><div class="val">' + i.val + '</div></div>'
+  ).join('');
+
+  // SKU list
+  const skuList = document.getElementById('summary-sku-list');
+  document.getElementById('summary-sku-count').textContent = state.skuData.length;
+  skuList.innerHTML = state.skuData.map(s =>
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:12px;">' +
+    '<span style="color:#1e293b;font-weight:500;">' + (s.sku || 'Sin SKU') + '</span>' +
+    '<span style="color:#64748b;">' + (s.descripcion || '') + '</span>' +
+    '<span style="font-weight:600;color:#0d2b7a;">' + (s.cantidad || 0) + ' ' + (s.um || 'PZA') + '</span>' +
+    '</div>'
+  ).join('');
+
+  // Discrepancies panel
+  const discPanel = document.getElementById('summary-discrepancy-panel');
+  const discList = document.getElementById('summary-disc-list');
+  const discItems = state.scanResults.filter(r => r.status === 'mismatch');
+  if (discItems.length > 0) {
+    discPanel.style.display = 'block';
+    discList.innerHTML = discItems.map(d =>
+      '<div>• ' + (d.sku || d.label) + ': ' + (d.discrepancy || 'Diferencia detectada') + '</div>'
+    ).join('');
+  } else {
+    discPanel.style.display = 'none';
+  }
+
+  // Excel info: skip for Safran (SAF)
+  const isSafran = state.cliente && (state.cliente.codigo || '').toUpperCase().startsWith('SAF');
+  const excelMsg = document.getElementById('excel-status-msg');
+  const excelDetail = document.getElementById('excel-status-detail');
+  if (isSafran) {
+    excelMsg.textContent = '📊 Exportación Excel';
+    excelDetail.textContent = 'Excluida para cliente Safran según reglas de negocio';
+    document.getElementById('excel-info-panel').style.background = '#f8fafc';
+    document.getElementById('excel-info-panel').style.borderColor = '#e2e8f0';
+  } else {
+    excelMsg.textContent = '📊 Exportación Excel';
+    excelDetail.textContent = 'Se generará el reporte automáticamente al confirmar';
+  }
+}
+
+async function completarRecepcion() {
+  const btn = document.getElementById('btn-complete');
+  btn.disabled = true;
+  btn.textContent = 'Generando folio…';
+  showLoading('Generando folio oficial…');
+
+  try {
+    // 1. Generate folio via Edge Function
+    const folioResult = await callEdge('generar-folio', {
+      cliente_id: state.cliente.id,
+      tipo: state.tipoCarga,
+      ubicacion: state.ubicacion
+    });
+
+    state.folio = folioResult.folio || folioResult.numero || folioResult.id;
+    hideLoading();
+    showLoading('Registrando en inventario…');
+
+    // 2. Register in inventory tables
+    await registrarEnInventario(state.folio);
+
+    // 3. Excel export (skip for Safran)
+    const isSafran = state.cliente && (state.cliente.codigo || '').toUpperCase().startsWith('SAF');
+    hideLoading();
+
+    if (!isSafran) {
+      showLoading('Generando Excel…');
+      try {
+        await exportarExcel(state.folio);
+      } catch (excelErr) {
+        console.warn('Excel export failed (non-critical):', excelErr);
+      }
+      hideLoading();
+    }
+
+    // 4. Show success
+    document.getElementById('folio-pending-panel').style.display = 'none';
+    document.getElementById('folio-success-panel').style.display = 'block';
+    document.getElementById('folio-display-num').textContent = state.folio;
+    document.getElementById('folio-display-date').textContent = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    if (!isSafran && state.excelBlob) {
+      document.getElementById('btn-excel-download').style.display = 'inline-flex';
+    }
+
+    toast('¡Folio ' + state.folio + ' generado exitosamente!', 'success', 6000);
+
+  } catch (e) {
+    hideLoading();
+    console.error('completarRecepcion:', e);
+    toast('Error al completar recepción: ' + e.message, 'error', 8000);
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Generar Folio y Confirmar';
+  }
+}
+
+async function registrarEnInventario(folio) {
+  const now = new Date().toISOString();
+  const rows = state.skuData.map(item => ({
+    folio: folio,
+    cliente_id: state.cliente.id,
+    sku: item.sku || '',
+    descripcion: item.descripcion || '',
+    cantidad: parseFloat(item.cantidad) || 0,
+    unidad: item.um || 'PZA',
+    ubicacion: state.ubicacion,
+    tipo_carga: state.tipoCarga,
+    proveedor: state.proveedor || null,
+    observaciones: state.observaciones || null,
+    creado_en: now
+  }));
+
+  // Try inventario table; fall back to martech_entradas or cooper_entradas
+  try {
+    await sbPost('inventario', rows.length === 1 ? rows[0] : rows);
+  } catch (e) {
+    console.warn('inventario insert failed, trying martech_entradas:', e.message);
+    // Legacy fallback: martech_entradas
+    const legacyRows = rows.map(r => ({
+      folio: r.folio,
+      cliente_id: r.cliente_id,
+      sku: r.sku,
+      descripcion: r.descripcion,
+      cantidad: r.cantidad,
+      unidad: r.unidad,
+      ubicacion: r.ubicacion,
+      tipo: r.tipo_carga,
+      fecha_entrada: r.creado_en
+    }));
+    try {
+      for (const row of legacyRows) await sbPost('martech_entradas', row);
+    } catch (e2) {
+      console.warn('martech_entradas also failed:', e2.message);
+      // Try cooper_entradas
+      for (const row of legacyRows) {
+        try { await sbPost('cooper_entradas', row); } catch {}
+      }
+    }
+  }
+}
+
+async function exportarExcel(folio) {
+  // Build CSV content as Excel export
+  const headers = ['Folio','Cliente','SKU','Descripción','Cantidad','U/M','Ubicación','Tipo','Proveedor','Fecha'];
+  const fecha = new Date().toLocaleString('es-MX');
+  const csvRows = [headers.join(',')];
+
+  state.skuData.forEach(item => {
+    const row = [
+      folio,
+      '"' + (state.cliente?.nombre || '') + '"',
+      '"' + (item.sku || '') + '"',
+      '"' + (item.descripcion || '') + '"',
+      item.cantidad || 0,
+      item.um || 'PZA',
+      state.ubicacion,
+      state.tipoCarga,
+      '"' + (state.proveedor || '') + '"',
+      '"' + fecha + '"'
+    ];
+    csvRows.push(row.join(','));
+  });
+
+  const csvContent = csvRows.join('\n');
+  state.excelBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  state.excelFilename = 'Recepcion_' + folio + '_' + new Date().toISOString().slice(0,10) + '.csv';
+}
+
+function triggerExcelDownload() {
+  if (!state.excelBlob) return;
+  const url = URL.createObjectURL(state.excelBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = state.excelFilename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESET MODULE
+// ═══════════════════════════════════════════════════════════
+function resetModule() {
+  Object.assign(state, {
+    currentStep: 1, completedSteps: [],
+    cliente: null, tipoCarga: null, proveedor: '', bultosEsperados: 0, observaciones: '',
+    photos: [], skuData: [], scanResults: [],
+    ubicacion: '', embalaje: '', peso: 0,
+    folio: null, excelBlob: null, excelFilename: ''
+  });
+  selectedLocation = '';
+  suggestedLocation = '';
+
+  ['2','3','4','5'].forEach(n => {
+    document.getElementById('step-' + n).classList.remove('active');
+    const tab = document.getElementById('step-tab-' + n);
+    tab.className = 'step-item locked';
+    const num = tab.querySelector('.step-num');
+    if (num) { num.style.background = ''; num.style.color = ''; }
+  });
+
+  document.getElementById('step-1').classList.add('active');
+  document.getElementById('step-tab-1').className = 'step-item active';
+  document.getElementById('step-badge').textContent = 'Paso 1/5';
+  document.getElementById('progress-fill').style.width = '20%';
+  document.getElementById('cliente-chip').textContent = 'Sin cliente';
+  document.getElementById('tipo-chip').textContent = 'Sin tipo';
+  document.getElementById('folio-pending-panel').style.display = 'block';
+  document.getElementById('folio-success-panel').style.display = 'none';
+  document.getElementById('card-sku-table').style.display = 'none';
+  document.getElementById('sel-cliente').value = '';
+  document.getElementById('sel-tipo').value = '';
+
+  toast('Módulo reiniciado para nueva recepción', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadClientes();
+  const inp = document.getElementById('inp-label-scan');
+  if (inp) {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') scanLabel();
+    });
+  }
+});
+</script>
+</body>
+</html>
