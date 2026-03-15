@@ -83,7 +83,7 @@ serve(async (req: Request): Promise<Response> => {
   const sbUrl = Deno.env.get("SUPABASE_URL")!;
   const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb    = createClient(sbUrl, sbKey, {
-    db: { schema: "public" },
+    db: { schema: "ideascan" },
     auth: { persistSession: false },
   });
 
