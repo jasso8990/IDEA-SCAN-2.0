@@ -150,9 +150,9 @@ serve(async (req: Request): Promise<Response> => {
       return errResp(400, "cliente_id es requerido");
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("ANTHROPIC_KEY");
     if (!apiKey) {
-      return errResp(500, "ANTHROPIC_API_KEY no configurada en Supabase Secrets");
+      return errResp(500, "ANTHROPIC_KEY no configurada en Supabase Secrets");
     }
 
     // ── Obtener código del cliente para contexto ─────────────────────────
